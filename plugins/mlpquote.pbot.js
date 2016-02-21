@@ -56,7 +56,7 @@ var list = [
     "Are you loco in the coco?",
     "Ha-ha, just kidding. OR AM I?!?!? Sometimes I can't even tell!",
     "I don't like it. I don't like it one bit.",
-    //"And thats how Equestria was made.",
+    "And thats how Equestria was made.",
     "Eternal chaos come with chocolate rain, you guys! CHOCOLATE! RAIN!",
     "You shouldn't hit the books, you should really just read them.",
     "Thanks, guys. You're all great friends too. Even when <i>I</i> don't understand me.",
@@ -103,7 +103,8 @@ var list = [
     "I have been looking for you everywhere. We have the thing at the place!",
     //Misc
     "This afternoon? As in 'this afternoon' this afternoon?",
-    "*Insert random funny quote here*"
+    "*Insert random funny quote here*",
+    "IT'S NOT... CREEPY"
 ];
 
 function handleMessage(data, whisper) {
@@ -111,20 +112,20 @@ function handleMessage(data, whisper) {
         if (data.msg.toLowerCase().startsWith("!mlpquote")) {
             if (Date.now() - lastMsgTime > minTimeBetweenMsg) {
                 var cmds = data.msg.toLowerCase().split(' ');
-                if (cmds.length === 2 && isInt(cmds[1]) && parseInt(cmds[1]) >=0 && parseInt(cmds[1]) < list.length) {
+                if (cmds.length === 2 && isInt(cmds[1]) && parseInt(cmds[1]) > 0 && parseInt(cmds[1]) < (list.length+1)) {
                     lastMsgTime = Date.now();
-                    sendMessage(list[parseInt(cmds[1])] + "  (" + parseInt(cmds[1])  + ")", whisper ? data.username : undefined);
+                    sendMessage(list[parseInt(cmds[1]) - 1] + "  (" + (parseInt(cmds[1]))  + ")", whisper ? data.username : undefined);
                 } else {
                     lastMsgTime = Date.now();
                     var rnum = Math.floor(Math.random() * list.length);
-                    sendMessage(list[rnum] + "  (" + rnum  + ")", whisper ? data.username : undefined);
+                    sendMessage(list[rnum] + "  (" + (rnum + 1)  + ")", whisper ? data.username : undefined);
                 }
             }
         }
     }
 }
 function isInt(value) {
-  return !isNaN(value) && (function(x) { return (x | 0) === x; })(parseFloat(value))
+  return !isNaN(value) && (function(x) { return (x | 0) === x; })(parseFloat(value));
 }
 
 function sendMessage(txt, whisperUser) {
