@@ -1,9 +1,10 @@
 ﻿# PicartoTV Chat Bot
 ####An extendable bot for your Picarto Chat
 
-[![NPM](https://nodei.co/npm/picarto-chat-bot.png?downloads=true&downloadRank=true&stars=true)](https://nodei.co/npm/picarto-chat-bot/) 
-
-[![Join the chat at https://gitter.im/Wolvan/PicartoChatBot](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/Wolvan/PicartoChatBot?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) [![npm version](https://badge.fury.io/js/picarto-chat-bot.svg)](https://badge.fury.io/js/picarto-chat-bot)
+####Warning: This is an experimental branch and may blow up, crash, or plot to take over the world at any time. I would suggest looking at
+#####https://github.com/Tschrock/PicartoChatBot/tree/master
+####or
+#####https://github.com/Wolvan/PicartoChatBot
 
 ## Introduction
 This is an extendable bot for Picarto.TV chats. By itself it does nothing, that's where Plugins come in handy. Drop plugin files into the `/plugins` directory, load them from the bot console (or by restarting completely) and enjoy it's functionality.
@@ -17,14 +18,6 @@ This is an extendable bot for Picarto.TV chats. By itself it does nothing, that'
 	* `greetings.pbot.js` Make the bot greet people or say goodbye
 	* `message_output.pbot.js` Print messages from chat to your output
 	* `request_q.pbot.js` A queue plugin for requests or commissions
-
-## Install the bot
-### from npm (globally)
-1. Install NodeJS with npm
-2. Use `npm install -g picarto-chat-bot` from a command prompt or terminal
-3. Install Plugins
-4. Run it with `picarto-bot [-n|-c|-t|--help]`
-5. Use the `help` command for a list of commands when the bot is running
 
 ### from GitHub (locally)
 1. Clone this repository or download the source as .zip file
@@ -43,5 +36,3 @@ Easiest is to check existing plugins on how they are written, but you can also c
 Make sure that your plugin has the file extension `.pbot.js`.
 
 Wanna work on the bot itself? Go ahead and fork the repository, make your changes and open a Pull Request back into here!
-
-Got any other questions? [Join the Gitter Channel of the bot](https://gitter.im/Wolvan/PicartoChatBot), I should be available there most of the time.
