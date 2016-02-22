@@ -1,8 +1,8 @@
 var api;
 
-function cEvt1 (data) { console.log("connect:"); console.log(data); }
-function cEvt2 (data) { console.log("disconnect:"); console.log(data); }
-function cEvt3 (data) { console.log("reconnect:"); console.log(data); }
+function cEvt1 (data) { console.log("connected:"); console.log(data); }
+function cEvt2 (data) { console.log("disconnected:"); console.log(data); }
+function cEvt3 (data) { console.log("reconnected:"); console.log(data); }
 function cEvt4 (data) { console.log("reconnect_attempt:"); console.log(data); }
 function cEvt5 (data) { console.log("chatMode:"); console.log(data); }
 function cEvt6 (data) { console.log("srvMsg:"); console.log(data); }
@@ -45,9 +45,9 @@ module.exports = {
         api = _api;
     },
     start: function () {
-        api.Events.on("connect", cEvt1);
-        api.Events.on("disconnect", cEvt2);
-        api.Events.on("reconnect", cEvt3);
+        api.Events.on("connected", cEvt1);
+        api.Events.on("disconnected", cEvt2);
+        api.Events.on("reconnected", cEvt3);
         api.Events.on("reconnect_attempt", cEvt4);
         api.Events.on("chatMode", cEvt5);
         api.Events.on("srvMsg", cEvt6);

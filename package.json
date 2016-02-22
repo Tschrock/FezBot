@@ -26,7 +26,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Wolvan/PicartoChatBot.git"
+    "url": "git+https://github.com/Tschrock/PicartoChatBot.git"
   },
   "keywords": [
     "picarto",
@@ -36,7 +36,7 @@
   ],
   "license": "GPL-3.0",
   "bugs": {
-    "url": "https://github.com/Wolvan/PicartoChatBot/issues"
+    "url": "https://github.com/Tschrock/PicartoChatBot/issues"
   },
-  "homepage": "https://github.com/Wolvan/PicartoChatBot#readme"
+  "homepage": "https://github.com/Tschrock/PicartoChatBot#readme"
 }
