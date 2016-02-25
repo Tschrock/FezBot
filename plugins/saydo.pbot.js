@@ -47,6 +47,7 @@ function handleMessage(data, whisper) {
         } else if (cmd === '!unwhisper' && pars.length > 1) {
             if (api.permissions_manager.userHasPermission(data, "cmd.unwhisper") || api.permissions_manager.isOwner(data)) {
                 data.msg = pars.slice(1).join(' ');
+                data.id += '_';
                 api.Events.emit("userMsg", api.user_manager.updateUserData(data));
             } else {
                 sendMessage("Sorry, you don't have permission to use this command.", data.username);
