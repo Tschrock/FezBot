@@ -1,31 +1,5 @@
 var api;
 
-//// Try to prevent responding to messages send before we connected
-var startTime;
-var msBeforeStart = 1000;
-var previousMessages = [];
-function checkMessage(data) {
-    if (previousMessages.indexOf(data.id) === -1) {
-        return true && Date.now() - startTime > msBeforeStart;
-    } else {
-        previousMessages.push(data.id);
-        if (previousMessages.length > 50) {
-            previousMessages.shift();
-        }
-        return false;
-    }
-}
-////
-
-minTimeBetweenMsg = 10000;
-lastMsgTime = Date.now();
-
-function newMessage(data) {
-    handleMessage(data, false);
-}
-function newWhisper(data) {
-    handleMessage(data, true);
-}
 var list = [
     //FS
     "No... I mean, yes... or, actually, kind of.",
@@ -107,25 +81,31 @@ var list = [
     "IT'S NOT... CREEPY"
 ];
 
+function newMessage(data) {
+    handleMessage(data, false);
+}
+function newWhisper(data) {
+    handleMessage(data, true);
+}
+
 function handleMessage(data, whisper) {
-    if (checkMessage(data)) {
-        if (data.msg.toLowerCase().startsWith("!mlpquote")) {
-            if (Date.now() - lastMsgTime > minTimeBetweenMsg) {
-                var cmds = data.msg.toLowerCase().split(' ');
-                if (cmds.length === 2 && isInt(cmds[1]) && parseInt(cmds[1]) > 0 && parseInt(cmds[1]) < (list.length+1)) {
-                    lastMsgTime = Date.now();
-                    sendMessage(list[parseInt(cmds[1]) - 1] + "  (" + (parseInt(cmds[1]))  + ")", whisper ? data.username : undefined);
-                } else {
-                    lastMsgTime = Date.now();
-                    var rnum = Math.floor(Math.random() * list.length);
-                    sendMessage(list[rnum] + "  (" + (rnum + 1)  + ")", whisper ? data.username : undefined);
-                }
+    if (data.msg.toLowerCase().startsWith("!mlpquote")) {
+        if (api.timeout_manager.checkTimeout("cmd.mlpquote")) {
+            var cmds = data.msg.toLowerCase().split(' ');
+            if (cmds.length === 2 && isInt(cmds[1]) && parseInt(cmds[1]) > 0 && parseInt(cmds[1]) < (list.length + 1)) {
+                sendMessage(list[parseInt(cmds[1]) - 1] + "  (" + (parseInt(cmds[1])) + ")", whisper ? data.username : undefined);
+            } else {
+                var rnum = Math.floor(Math.random() * list.length);
+                sendMessage(list[rnum] + "  (" + (rnum + 1) + ")", whisper ? data.username : undefined);
             }
         }
     }
 }
+
 function isInt(value) {
-  return !isNaN(value) && (function(x) { return (x | 0) === x; })(parseFloat(value));
+    return !isNaN(value) && (function (x) {
+        return (x | 0) === x;
+    })(parseFloat(value));
 }
 
 function sendMessage(txt, whisperUser) {
@@ -147,7 +127,6 @@ module.exports = {
         api = _api;
     },
     start: function () {
-        startTime = Date.now();
         api.Events.on("userMsg", newMessage);
         api.Events.on("whisper", newWhisper);
     },
