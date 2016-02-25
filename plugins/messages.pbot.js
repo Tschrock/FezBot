@@ -77,11 +77,7 @@ function sendMessage(txt, whisperUser) {
 
 module.exports = {
     meta_inf: {
-<<<<<<< Updated upstream
-        name: "ChatNotes",
-=======
         name: "Custom notes",
->>>>>>> Stashed changes
         version: "1.0.0",
         description: "Allows to save and view notes",
         author: "Tschrock (CyberPon3)"
@@ -91,22 +87,10 @@ module.exports = {
         storage = _storage;
     },
     start: function () {
-<<<<<<< Updated upstream
-        api.Events.on("connected", connected);
-        api.Events.on("reconnected", connected);
-        api.Events.on("channelUsers", updateUserList);
-=======
->>>>>>> Stashed changes
         api.Events.on("userMsg", newMessage);
         api.Events.on("whisper", newWhisper);
     },
     stop: function () {
-<<<<<<< Updated upstream
-        api.Events.removeListener("connected", connected);
-        api.Events.removeListener("reconnected", connected);
-        api.Events.removeListener("channelUsers", updateUserList);
-=======
->>>>>>> Stashed changes
         api.Events.removeListener("userMsg", newMessage);
         api.Events.removeListener("whisper", newWhisper);
     }
