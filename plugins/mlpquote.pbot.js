@@ -81,22 +81,15 @@ var list = [
     "IT'S NOT... CREEPY"
 ];
 
-function newMessage(data) {
-    handleMessage(data, false);
-}
-function newWhisper(data) {
-    handleMessage(data, true);
-}
-
-function handleMessage(data, whisper) {
+function handleMessage(data) {
     if (data.msg.toLowerCase().startsWith("!mlpquote")) {
         if (api.timeout_manager.checkTimeout("cmd.mlpquote")) {
             var cmds = data.msg.toLowerCase().split(' ');
             if (cmds.length === 2 && isInt(cmds[1]) && parseInt(cmds[1]) > 0 && parseInt(cmds[1]) < (list.length + 1)) {
-                sendMessage(list[parseInt(cmds[1]) - 1] + "  (" + (parseInt(cmds[1])) + ")", whisper ? data.username : undefined);
+                sendMessage(data, list[parseInt(cmds[1]) - 1] + "  (" + (parseInt(cmds[1])) + ")", data.whisper);
             } else {
                 var rnum = Math.floor(Math.random() * list.length);
-                sendMessage(list[rnum] + "  (" + (rnum + 1) + ")", whisper ? data.username : undefined);
+                sendMessage(data, list[rnum] + "  (" + (rnum + 1) + ")", data.whisper);
             }
         }
     }
@@ -108,11 +101,11 @@ function isInt(value) {
     })(parseFloat(value));
 }
 
-function sendMessage(txt, whisperUser) {
-    if (typeof whisperUser !== 'undefined') {
-        api.Messages.whisper(whisperUser, txt);
+function sendMessage(uData, txt, whisper) {
+    if (typeof whisper !== 'undefined' && whisper) {
+        api.Messages.whisper(uData.username, txt, uData.channel);
     } else {
-        api.Messages.send(txt);
+        api.Messages.send(txt, uData.channel);
     }
 }
 
@@ -127,11 +120,11 @@ module.exports = {
         api = _api;
     },
     start: function () {
-        api.Events.on("userMsg", newMessage);
-        api.Events.on("whisper", newWhisper);
+        api.Events.on("userMsg", handleMessage);
+        api.Events.on("whisper", handleMessage);
     },
     stop: function () {
-        api.Events.removeListener("userMsg", newMessage);
-        api.Events.removeListener("whisper", newWhisper);
+        api.Events.removeListener("userMsg", handleMessage);
+        api.Events.removeListener("whisper", handleMessage);
     }
 }

@@ -2,7 +2,7 @@
 var storage;
 
 function handleMsg(data) {
-    if (!data.msg.toLowerCase().startsWith("!") && data.username.toLowerCase() !== api.name.toLowerCase()) {
+    if (!data.msg.toLowerCase().startsWith("!") /*&& data.username.toLowerCase() !== api.name.toLowerCase()*/) {
         
     }
 }

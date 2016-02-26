@@ -2,7 +2,7 @@
 var storage;
 
 function handleMsg(data) {
-    if (!data.msg.toLowerCase().startsWith("!") && data.username.toLowerCase() !== api.name.toLowerCase()) {
+    if (!data.msg.toLowerCase().startsWith("!") /*&& data.username.toLowerCase() !== api.name.toLowerCase()*/) {
         if (data.msg.toLowerCase().indexOf("skittle") !== -1 && api.timeout_manager.checkTimeout("trigger.skittle", 60000)) {
             api.Messages.send("TASTE THE RAINBOW!");
 

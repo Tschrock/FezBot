@@ -11,7 +11,7 @@ function handleMessage(data, whisper) {
     if (data.msg.toLowerCase().startsWith("!random")) {
         if (api.permissions_manager.userHasPermission(data, "cmd.random") || api.permissions_manager.isOwner(data)) {
             var userArr = api.user_manager.__currentUserData.filter(function (x) {
-                return api.permissions_manager.userHasPermission(data, "cmd.random.include", api.permissions_manager.PERMISSION_USER) && x.username.toLowerCase() !== api.name.toLowerCase();
+                return api.permissions_manager.userHasPermission(data, "cmd.random.include", api.permissions_manager.PERMISSION_USER) /*&& x.username.toLowerCase() !== api.name.toLowerCase()*/;
             });
             var ritem = userArr[Math.floor(Math.random() * userArr.length)];
             if (typeof ritem !== 'undefined') {

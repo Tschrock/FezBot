@@ -1,25 +1,6 @@
 var api;
 
-function checkCommand(command, person, isWhisper, defaultTimeoutMs, defaultCmdPermission) {
-    if (isWhisper || checkTimeout("cmd." + command, defaultTimeoutMs) || userHasPermission(person, "timeoutbypass.global") || userHasPermission(person, "timeoutbypass.cmd." + command)) {
-        if (userHasPermission(person, "cmd." + command, defaultCmdPermission) || isOwner(person)) {
-            return true;
-        } else {
-            sendMessage("Sorry, you don't have permission to use this command.", person.username);
-        }
-    } else {
-        sendMessage("Too soon, wait another " + getTimeoutRemaining("command." + command) / 1000 + " sec. and try again (or whisper me).", person.username);
-    }
-    return false;
-}
-
-function newMessage(data) {
-    handleMessage(data, false);
-}
-function newWhisper(data) {
-    handleMessage(data, true);
-}
-function handleMessage(data, whisper) {
+function handleMessage(data) {
     if (data.msg.startsWith("!")) {
         var pars = data.msg.split(' ');
         var cmd = pars[0].toLowerCase();
@@ -27,21 +8,21 @@ function handleMessage(data, whisper) {
             if (api.permissions_manager.userHasPermission(data, "cmd.sudo") || api.permissions_manager.isOwner(data)) {
                 api.Events.emit("userMsg", api.user_manager.updateUserData({username: pars[1], msg: pars.slice(2).join(' ')}));
             } else {
-                sendMessage("Sorry, you don't have permission to use this command.", data.username);
+                sendMessage(data, "Sorry, you don't have permission to use this command.", true);
             }
 
         } else if (cmd === '!say' && pars.length > 1) {
             if (api.permissions_manager.userHasPermission(data, "cmd.say") || api.permissions_manager.isOwner(data)) {
-                sendMessage(pars.slice(1).join(' '));
+                sendMessage(data, pars.slice(1).join(' '));
             } else {
-                sendMessage("Sorry, you don't have permission to use this command.", data.username);
+                sendMessage(data, "Sorry, you don't have permission to use this command.", true);
             }
 
         } else if (cmd === '!whisper' && pars.length > 2) {
             if (api.permissions_manager.userHasPermission(data, "cmd.whisper") || api.permissions_manager.isOwner(data)) {
-                sendMessage(pars.slice(2).join(' '), pars[1]);
+                api.Messages.whisper(pars[1], pars.slice(2).join(' '), data.channel);
             } else {
-                sendMessage("Sorry, you don't have permission to use this command.", data.username);
+                sendMessage(data, "Sorry, you don't have permission to use this command.", true);
             }
 
         } else if (cmd === '!unwhisper' && pars.length > 1) {
@@ -50,18 +31,18 @@ function handleMessage(data, whisper) {
                 data.id += '_';
                 api.Events.emit("userMsg", api.user_manager.updateUserData(data));
             } else {
-                sendMessage("Sorry, you don't have permission to use this command.", data.username);
+                sendMessage(data, "Sorry, you don't have permission to use this command.", true);
             }
 
         }
     }
 }
 
-function sendMessage(txt, whisperUser) {
-    if (typeof whisperUser !== 'undefined') {
-        api.Messages.whisper(whisperUser, txt);
+function sendMessage(uData, txt, whisper) {
+    if (typeof whisper !== 'undefined' && whisper) {
+        api.Messages.whisper(uData.username, txt, uData.channel);
     } else {
-        api.Messages.send(txt);
+        api.Messages.send(txt, uData.channel);
     }
 }
 
@@ -76,11 +57,11 @@ module.exports = {
         api = _api;
     },
     start: function () {
-        api.Events.on("userMsg", newMessage);
-        api.Events.on("whisper", newWhisper);
+        api.Events.on("userMsg", handleMessage);
+        api.Events.on("whisper", handleMessage);
     },
     stop: function () {
-        api.Events.removeListener("userMsg", newMessage);
-        api.Events.removeListener("whisper", newWhisper);
+        api.Events.removeListener("userMsg", handleMessage);
+        api.Events.removeListener("whisper", handleMessage);
     }
 }
