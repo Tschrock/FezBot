@@ -8,32 +8,32 @@ function handleMessage(data) {
 
         var messages = storage.getItem("messages") || {};
 
-        if (cmd === '!addmsg' || cmd === '!setmsg') {
-            if (api.permissions_manager.userHasPermission(data, "cmd.addmsg") || api.permissions_manager.isOwner(data)) {
+        if (cmd === '!addcmd' || cmd === '!setcmd') {
+            if (api.permissions_manager.userHasPermission(data, "cmd.addcmd") || api.permissions_manager.isOwner(data)) {
                 if (pars.length > 2) {
                     messages[pars[1].toLowerCase().replace(/^!/, '')] = pars.slice(2).join(' ');
                     storage.setItem("messages", messages);
                 } else {
-                    sendMessage(data, "Usage: !addmsg <command> <message...>", true);
+                    sendMessage(data, "Usage: !addcmd <command> <message...>", true);
                 }
             } else {
                 sendMessage(data, "Sorry, you don't have permission to use this command.", true);
             }
 
-        } else if (cmd === '!delmsg') {
-            if (api.permissions_manager.userHasPermission(data, "cmd.delmsg") || api.permissions_manager.isOwner(data)) {
+        } else if (cmd === '!delcmd') {
+            if (api.permissions_manager.userHasPermission(data, "cmd.delcmd") || api.permissions_manager.isOwner(data)) {
                 if (pars.length > 1) {
                     delete messages[pars[1].toLowerCase().replace(/^!/, '')];
                     storage.setItem("messages", messages);
                 } else {
-                    sendMessage(data, "Usage: !delmsg <command>", true);
+                    sendMessage(data, "Usage: !delcmd <command>", true);
                 }
             } else {
                 sendMessage(data, "Sorry, you don't have permission to use this command.", true);
             }
 
-        } else if (cmd === '!lsmsg') {
-            if (api.permissions_manager.userHasPermission(data, "cmd.lsmsg") || api.permissions_manager.isOwner(data)) {
+        } else if (cmd === '!lscmd') {
+            if (api.permissions_manager.userHasPermission(data, "cmd.lscmd") || api.permissions_manager.isOwner(data)) {
                 var resp = "Saved Messages:\n  |  ";
                 for (var msg in messages) {
                     resp += "!" + msg + " - " + messages[msg].substr(0, 20) + (messages[msg].length > 20 ? "..." : "") + "\n  |  ";
@@ -68,9 +68,9 @@ function sendMessage(uData, txt, whisper) {
 
 module.exports = {
     meta_inf: {
-        name: "Custom notes",
+        name: "Custom Commands",
         version: "1.0.0",
-        description: "Allows to save and view notes",
+        description: "Create commands to say premade messages.",
         author: "Tschrock (CyberPon3)"
     },
     load: function (_api, _storage) {

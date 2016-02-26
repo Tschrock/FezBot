@@ -8,35 +8,35 @@ function handleMessage(data) {
 
         var commands = storage.getItem("commands") || {};
 
-        if (cmd === '!addcmd' || cmd === '!setcmd') {
-            if (api.permissions_manager.userHasPermission(data, "cmd.addcmd") || api.permissions_manager.isOwner(data)) {
+        if (cmd === '!addalias' || cmd === '!setalias') {
+            if (api.permissions_manager.userHasPermission(data, "cmd.addalias") || api.permissions_manager.isOwner(data)) {
                 if (pars.length > 2) {
                     commands[pars[1].toLowerCase().replace(/^!/, '')] = pars.slice(2).join(' ');
                     storage.setItem("commands", commands);
                     sendMessage(data, "Added '!" + pars[1].toLowerCase().replace(/^!/, '') + "' command.", true);
                 } else {
-                    sendMessage(data, "Usage: !addcmd <command> <cmdmessage...>", true);
+                    sendMessage(data, "Usage: !addalias <command> <cmdmessage...>", true);
                 }
             } else {
                 sendMessage(data, "Sorry, you don't have permission to use this command.", true);
             }
 
-        } else if (cmd === '!delcmd') {
-            if (api.permissions_manager.userHasPermission(data, "cmd.delcmd") || api.permissions_manager.isOwner(data)) {
+        } else if (cmd === '!delalias') {
+            if (api.permissions_manager.userHasPermission(data, "cmd.delalias") || api.permissions_manager.isOwner(data)) {
                 if (pars.length > 1) {
                     delete commands[pars[1].toLowerCase().replace(/^!/, '')];
                     storage.setItem("commands", commands);
                     sendMessage(data, "Removed '!" + pars[1].toLowerCase().replace(/^!/, '') + "' command.", true);
                 } else {
-                    sendMessage(data, "Usage: !delcmd <command>", true);
+                    sendMessage(data, "Usage: !delalias <command>", true);
                 }
             } else {
                 sendMessage(data, "Sorry, you don't have permission to use this command.", true);
             }
 
-        } else if (cmd === '!lscmd') {
-            if (api.permissions_manager.userHasPermission(data, "cmd.lscmd") || api.permissions_manager.isOwner(data)) {
-                var resp = "Saved Commands:\n  |  ";
+        } else if (cmd === '!lsalias') {
+            if (api.permissions_manager.userHasPermission(data, "cmd.lsalias") || api.permissions_manager.isOwner(data)) {
+                var resp = "Saved Aliases:\n  |  ";
                 for (var msg in commands) {
                     resp += "!" + msg + " - " + commands[msg].substr(0, 20) + (commands[msg].length > 20 ? "..." : "") + "\n  |  ";
                 }
@@ -51,7 +51,7 @@ function handleMessage(data) {
                 if (api.permissions_manager.userHasPermission(data, "cmd." + msgcmd) || api.permissions_manager.isOwner(data)) {
                     data.msg = commands[cmd.replace(/^!/, '')].replace('$args', pars.slice(1).join(' '));
                     data.id += '_';
-                    api.Events.emit("userMsg", api.user_manager.updateUserData(data));
+                    api.Events.emit(data.whisper ? "whisper" : "userMsg", api.user_manager.updateUserData(data));
                 } else {
                     sendMessage(data, "Sorry, you don't have permission to use this command.", true);
                 }
