@@ -1,38 +1,37 @@
 var api;
 
-function newMessage(data) {
-    handleMessage(data, false);
-}
-function newWhisper(data) {
-    handleMessage(data, true);
-}
-
-function handleMessage(data, whisper) {
+function handleMessage(data) {
     if (data.msg.toLowerCase().startsWith("!random")) {
         if (api.permissions_manager.userHasPermission(data, "cmd.random") || api.permissions_manager.isOwner(data)) {
-            var userArr = api.user_manager.__currentUserData.filter(function (x) {
-                return api.permissions_manager.userHasPermission(data, "cmd.random.include", api.permissions_manager.PERMISSION_USER) /*&& x.username.toLowerCase() !== api.name.toLowerCase()*/;
-            });
+            var cData = api.user_manager.__currentUserData || {};
+            var uData = cData[data.channel.toLowerCase()] || {};
+            var userArr = [];
+            for(var dat in uData) {
+                if (api.permissions_manager.userHasPermission(uData[dat], "cmd.random.include", api.permissions_manager.PERMISSION_USER) && !api.user_manager.isBot(data)) {
+                    userArr.push(uData[dat]);
+                }
+            }
             var ritem = userArr[Math.floor(Math.random() * userArr.length)];
+            
             if (typeof ritem !== 'undefined') {
-                sendMessage("Random user: *[" + ritem.username + "]", whisper ? data.username : undefined);
+                sendMessage(data, "Random user: *[" + ritem.username + "]", data.whisper);
             } else {
-                sendMessage("Error getting random user from list!", data.username);
+                sendMessage(data, "Error getting random user from list!", data.whisper);
                 console.log("Error getting random user from list!");
                 console.log(userArr);
                 console.log(ritem);
             }
         } else {
-            sendMessage("Sorry, you don't have permission to use this command.", data.username);
+            sendMessage(data, "Sorry, you don't have permission to use this command.", true);
         }
     }
 }
 
-function sendMessage(txt, whisperUser) {
-    if (typeof whisperUser !== 'undefined') {
-        api.Messages.whisper(whisperUser, txt);
+function sendMessage(uData, txt, whisper) {
+    if (typeof whisper !== 'undefined' && whisper) {
+        api.Messages.whisper(uData.username, txt, uData.channel);
     } else {
-        api.Messages.send(txt);
+        api.Messages.send(txt, uData.channel);
     }
 }
 
@@ -47,11 +46,11 @@ module.exports = {
         api = _api;
     },
     start: function () {
-        api.Events.on("userMsg", newMessage);
-        api.Events.on("whisper", newWhisper);
+        api.Events.on("userMsg", handleMessage);
+        api.Events.on("whisper", handleMessage);
     },
     stop: function () {
-        api.Events.removeListener("userMsg", newMessage);
-        api.Events.removeListener("whisper", newWhisper);
+        api.Events.removeListener("userMsg", handleMessage);
+        api.Events.removeListener("whisper", handleMessage);
     }
 }
