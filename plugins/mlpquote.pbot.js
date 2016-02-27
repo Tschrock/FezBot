@@ -87,6 +87,8 @@ function handleMessage(data) {
             var cmds = data.msg.toLowerCase().split(' ');
             if (cmds.length === 2 && isInt(cmds[1]) && parseInt(cmds[1]) > 0 && parseInt(cmds[1]) < (list.length + 1)) {
                 sendMessage(data, list[parseInt(cmds[1]) - 1] + "  (" + (parseInt(cmds[1])) + ")", data.whisper);
+            } else if (cmds.length === 2 && cmds[1] === 'list') {
+                sendMessage(data, "List of quotes: https://gist.github.com/Tschrock/b382b8672f5468dca45f", data.whisper);
             } else {
                 var rnum = Math.floor(Math.random() * list.length);
                 sendMessage(data, list[rnum] + "  (" + (rnum + 1) + ")", data.whisper);
