@@ -11,7 +11,7 @@ function handleMessage(data) {
             if (api.timeout_manager.checkTimeout("cmd.challenge")) {
                 sendMessage(data, storage.getItem("challenge") || "Use !setchallenge to set this message.", data.whisper);
             } else {
-                sendMessage(data, "Too soon, wait another " + api.timeout_manager.getTimeoutRemaining("cmd.challenge") / 1000 + " sec. and try again (or whisper me).", true);
+                sendMessage(data, "Too soon, wait another " + api.timeout_manager.getTimeRemaining("cmd.challenge") / 1000 + " sec. and try again (or whisper me).", true);
             }
         }
     }

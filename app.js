@@ -39,8 +39,13 @@ api.permissions_manager = {
     getPerm: function (channel, pId, defaultPermLevel) {
         channel = channel.toLowerCase();
         this.__permsCache = store.getItem("permissions") || {};
-        this.__permsCache[channel] = this.__permsCache[channel] || {};
-        return this.__permsCache[channel][pId] = (typeof this.__permsCache[channel][pId] !== 'undefined') ? this.__permsCache[channel][pId] : {id: pId, level: (typeof defaultPermLevel !== 'undefined' ? defaultPermLevel : this.PERMISSION_ADMIN | this.PERMISSION_MOD), whitelist: [], blacklist: []};
+        
+        if(typeof this.__permsCache[channel] === 'undefined' || typeof this.__permsCache[channel][pId] === 'undefined') {
+            this.__permsCache[channel] = this.__permsCache[channel] || {};
+            this.__permsCache[channel][pId] = this.__permsCache[channel][pId] || {id: pId, level: (typeof defaultPermLevel !== 'undefined' ? defaultPermLevel : this.PERMISSION_ADMIN | this.PERMISSION_MOD), whitelist: [], blacklist: []};
+            this.savePerms();
+        }
+        return this.__permsCache[channel][pId];
     },
     savePerms: function () {
         store.setItem("permissions", this.__permsCache);
@@ -50,7 +55,7 @@ api.permissions_manager = {
     },
     userHasPermission: function (user, pId, defaultPermLevel) { // !onblacklist && (permLevelCheck || (onwhitelist && registered))
         var p = this.getPerm(user.channel.toLowerCase(), pId, defaultPermLevel);
-        return !(p.blacklist.indexOf(user.username) !== -1) && ((p.level & this.getUserPermissionLevel(user) !== 0) || ((p.whitelist.indexOf(user.username) !== -1) && user.registered));
+        return !(p.blacklist.indexOf(user.username) !== -1) && (((p.level & this.getUserPermissionLevel(user)) !== 0) || ((p.whitelist.indexOf(user.username) !== -1) && user.registered));
     },
     getUserPermissionLevel: function (userData) {
         return (!(userData.admin || userData.mod || userData.ptvadmin) * this.PERMISSION_USER) +

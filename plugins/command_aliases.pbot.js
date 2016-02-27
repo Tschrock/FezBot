@@ -49,14 +49,16 @@ function handleMessage(data) {
             msgcmd = cmd.replace(/^!/, '');
             if (api.timeout_manager.checkTimeout("cmd." + msgcmd, 20000) || api.permissions_manager.userHasPermission(data, "timeoutbypass.global") || api.permissions_manager.userHasPermission(data, "timeoutbypass.cmd." + msgcmd)) {
                 if (api.permissions_manager.userHasPermission(data, "cmd." + msgcmd) || api.permissions_manager.isOwner(data)) {
-                    data.msg = commands[cmd.replace(/^!/, '')].replace('$args', pars.slice(1).join(' '));
-                    data.id += '_';
-                    api.Events.emit(data.whisper ? "whisper" : "userMsg", api.user_manager.updateUserData(data));
+                    var newData = api.user_manager.mergeUserData({}, data);
+                    newData.msg = commands[cmd.replace(/^!/, '')].replace('$args', pars.slice(1).join(' '));
+                    newData.id += '_';
+                    newData.fromAlias = true;
+                    api.Events.emit(data.whisper ? "whisper" : "userMsg", newData);
                 } else {
                     sendMessage(data, "Sorry, you don't have permission to use this command.", true);
                 }
             } else {
-                sendMessage(data, "Too soon, wait another " + api.timeout_manager.getTimeoutRemaining("cmd." + msgcmd) / 1000 + " sec. and try again (or whisper me).", true);
+                sendMessage(data, "Too soon, wait another " + api.timeout_manager.getTimeRemaining("cmd." + msgcmd) / 1000 + " sec. and try again (or whisper me).", true);
             }
         }
     }

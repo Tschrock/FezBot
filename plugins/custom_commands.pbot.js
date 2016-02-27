@@ -52,7 +52,7 @@ function handleMessage(data) {
                     sendMessage(data, "Sorry, you don't have permission to use this command.", true);
                 }
             } else {
-                sendMessage(data, "Too soon, wait another " + api.timeout_manager.getTimeoutRemaining("cmd." + msgcmd) / 1000 + " sec. and try again (or whisper me).", true);
+                sendMessage(data, "Too soon, wait another " + api.timeout_manager.getTimeRemaining("cmd." + msgcmd) / 1000 + " sec. and try again (or whisper me).", true);
             }
         }
     }
