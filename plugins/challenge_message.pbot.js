@@ -8,10 +8,10 @@ function handleMessage(data) {
         if (data.whisper) {
             sendMessage(data, storage.getItem("challenge") || "Use !setchallenge to set this message.", true);
         } else {
-            if (api.timeout_manager.checkTimeout("cmd.challenge")) {
+            if (api.timeout_manager.checkTimeout(data.channel, "cmd.challenge")) {
                 sendMessage(data, storage.getItem("challenge") || "Use !setchallenge to set this message.", data.whisper);
             } else {
-                sendMessage(data, "Too soon, wait another " + api.timeout_manager.getTimeRemaining("cmd.challenge") / 1000 + " sec. and try again (or whisper me).", true);
+                sendMessage(data, "Too soon, wait another " + api.timeout_manager.getTimeRemaining(data.channel, "cmd.challenge") / 1000 + " sec. and try again (or whisper me).", true);
             }
         }
     }
@@ -20,7 +20,7 @@ function handleMessage(data) {
             data.msg.toLowerCase().startsWith("!setchallenge")) {
 
         if (api.permissions_manager.userHasPermission(data, "cmd.setchallenge") || api.permissions_manager.isOwner(data)) {
-            api.timeout_manager.clearTimeout("cmd.challenge");
+            api.timeout_manager.clearTimeout(data.channel, "cmd.challenge");
             msgArr = data.msg.split(' ');
             storage.setItem("challenge", msgArr.slice(1).join(' '));
             sendMessage(data, "Set challenge.", data.whisper);

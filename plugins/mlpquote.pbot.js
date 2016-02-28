@@ -3,7 +3,7 @@ var api;
 var list = [
     //FS
     "No... I mean, yes... or, actually, kind of.",
-    "... think he's up to the task, mabey... but... but... <sub>no.</sub>",
+    "... think he's up to the task, maybe... but... but... <sub>no.</sub>",
     "Oh you poor poor little baby.",
     "Now this might hurt for juuust a second.",
     "Oh, well, better late than never, right?",
@@ -83,16 +83,18 @@ var list = [
 
 function handleMessage(data) {
     if (data.msg.toLowerCase().startsWith("!mlpquote")) {
-        if (api.timeout_manager.checkTimeout("cmd.mlpquote")) {
+        if (api.timeout_manager.checkTimeout(data.channel, "cmd.mlpquote")) {
             var cmds = data.msg.toLowerCase().split(' ');
             if (cmds.length === 2 && isInt(cmds[1]) && parseInt(cmds[1]) > 0 && parseInt(cmds[1]) < (list.length + 1)) {
-                sendMessage(data, list[parseInt(cmds[1]) - 1] + "  (" + (parseInt(cmds[1])) + ")", data.whisper);
+                sendMessage(data, list[parseInt(cmds[1]) - 1] + "  (" + (parseInt(cmds[1])) + "/" + list.length + ")", data.whisper);
             } else if (cmds.length === 2 && cmds[1] === 'list') {
                 sendMessage(data, "List of quotes: https://gist.github.com/Tschrock/b382b8672f5468dca45f", data.whisper);
             } else {
                 var rnum = Math.floor(Math.random() * list.length);
-                sendMessage(data, list[rnum] + "  (" + (rnum + 1) + ")", data.whisper);
+                sendMessage(data, list[rnum] + "  (" + (rnum + 1) + "/" + list.length + ")", data.whisper);
             }
+        } else {
+            sendMessage(data, "Too soon, wait another " + (api.timeout_manager.getTimeRemaining(data.channel, "cmd.mlpquote") / 1000) + " sec. and try again.", true);
         }
     }
 }
