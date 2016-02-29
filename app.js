@@ -50,8 +50,12 @@ api.permissions_manager = {
         return userData.username.toLowerCase() === userData.channel.toLowerCase();
     },
     userHasPermission: function (user, pId, defaultPermLevel) { // !onblacklist && (permLevelCheck || (onwhitelist && registered))
-        var p = this.getPerm(user.channel.toLowerCase(), pId, defaultPermLevel);
-        return !(p.blacklist.indexOf(user.username) !== -1) && (((p.level & this.getUserPermissionLevel(user)) !== 0) || ((p.whitelist.indexOf(user.username) !== -1) && user.registered));
+        var channelAdmins = api.user_manager.getAdmins(user.channel);
+        return channelAdmins.some(function (channelAdmin) {
+            var channel = channelAdmin.username;
+            var p = api.permissions_manager.getPerm(channel.toLowerCase(), pId, defaultPermLevel);
+            return !(p.blacklist.indexOf(user.username) !== -1) && (((p.level & api.permissions_manager.getUserPermissionLevel(user)) !== 0) || ((p.whitelist.indexOf(user.username) !== -1) && user.registered)); 
+        });
     },
     getUserPermissionLevel: function (userData) {
         return (!(userData.admin || userData.mod || userData.ptvadmin) * this.PERMISSION_USER) +
@@ -131,6 +135,16 @@ api.user_manager = {
     },
     isBot: function (userData) {
         return api.botName[userData.channel.toLowerCase()] && userData.username.toLowerCase() === api.botName[userData.channel.toLowerCase()].toLowerCase();
+    },
+    getAdmins: function (channel) {
+        this.__currentUserData[channel.toLowerCase()] = this.__currentUserData[channel.toLowerCase()] || {};
+        var rslts = [];
+        for(var user in this.__currentUserData[channel.toLowerCase()]) {
+            if(this.__currentUserData[channel.toLowerCase()][user].admin) {
+                rslts.push(this.__currentUserData[channel.toLowerCase()][user]);
+            }
+        }
+        return rslts;
     }
 };
 
