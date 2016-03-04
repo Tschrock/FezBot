@@ -46,7 +46,7 @@ function handleMessage(data) {
         } else if (typeof messages[cmd.replace(/^!/, '')] !== 'undefined') {
             msgcmd = cmd.replace(/^!/, '');
             if (data.whisper || api.timeout_manager.checkTimeout(data.channel, "cmd." + msgcmd, 20000) || api.permissions_manager.userHasPermission(data, "timeoutbypass.global") || api.permissions_manager.userHasPermission(data, "timeoutbypass.cmd." + msgcmd)) {
-                if (api.permissions_manager.userHasPermission(data, "cmd." + msgcmd) || api.permissions_manager.isOwner(data)) {
+                if (api.permissions_manager.userHasPermission(data, "cmd." + msgcmd, api.permissions_manager.PERMISSION_ADMIN | api.permissions_manager.PERMISSION_MOD | api.permissions_manager.PERMISSION_PTVADMIN | api.permissions_manager.PERMISSION_USER) || api.permissions_manager.isOwner(data)) {
                     sendMessage(data, messages[cmd.replace(/^!/, '')], data.whisper);
                 } else {
                     sendMessage(data, "Sorry, you don't have permission to use this command.", true);
@@ -66,6 +66,39 @@ function sendMessage(uData, txt, whisper) {
     }
 }
 
+function servePage(req,res) {
+    var path = req.url.split('/');
+    
+    if(path.length > 2 && path[1].toLowerCase() == "custom_commands" && path[2] != ''){
+        
+        var cmds = storage.getItem("messages_" + path[2]) || false;
+        if(cmds){
+            cmdMsgs = [];
+            for(var cmd in cmds) {
+                cmdMsgs.push({command: "!" + cmd, message: cmds[cmd]});
+            }
+            api.jade.renderFile(process.cwd() + '/views/list.jade',{listHeader: ["Command", "Message"], list: cmdMsgs, page: {title: path[2] + " Custom Commands", subheader: path[2] + "'s Commands:", breadcrumb: [["/", "Home"], ["/custom_commands", "Custom Commands"], ["", path[2]]]}}, function(err,html){
+                res.write(html);
+            });
+        } else {
+            api.jade.renderFile(process.cwd() + '/views/404.jade',null, function(err,html){
+                res.write(html);
+            });
+        }
+    } else if(path[1].toLowerCase() == "custom_commands"){
+        
+        var regex = new RegExp("messages_.*");
+        var channels = storage.keys().filter(function (x) { return regex.test(x); }).map(function (x) { return {channel: x.replace("messages_", "")}; });
+        
+        api.jade.renderFile(process.cwd() + '/views/channels.jade',{url: '/custom_commands/', channels: channels, page: {title: "Custom Commands", breadcrumb: [["/", "Home"], ["/custom_commands", "Custom Commands"]]}}, function(err,html){
+            res.write(html);
+        });
+    } else {
+        if(req.collection == null) req.collection = [];
+        req.collection.push(["Custom Commands","/custom_commands/","Custom Commands."]);
+    }
+}
+
 module.exports = {
     meta_inf: {
         name: "Custom Commands",
@@ -80,9 +113,11 @@ module.exports = {
     start: function () {
         api.Events.on("userMsg", handleMessage);
         api.Events.on("whisper", handleMessage);
+        api.Events.on("http", servePage);
     },
     stop: function () {
         api.Events.removeListener("userMsg", handleMessage);
         api.Events.removeListener("whisper", handleMessage);
+        api.Events.removeListener("http", servePage);
     }
 }

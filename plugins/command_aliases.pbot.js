@@ -72,6 +72,42 @@ function sendMessage(uData, txt, whisper) {
     }
 }
 
+var pluginUrl = "command_aliases";
+var pluginTitle = "Command Aliases";
+
+function servePage(req,res) {
+    var path = req.url.split('/');
+    
+    if(path.length > 2 && path[1].toLowerCase() == pluginUrl && path[2] != ''){
+        
+        var cmds = storage.getItem("commands_" + path[2]) || false;
+        if(cmds){
+            cmdMsgs = [];
+            for(var cmd in cmds) {
+                cmdMsgs.push({command: "!" + cmd, message: cmds[cmd]});
+            }
+            api.jade.renderFile(process.cwd() + '/views/list.jade',{listHeader: ["Alias", "Command"], list: cmdMsgs, page: {title: path[2] + " " + pluginTitle, subheader: path[2] + "'s " + pluginTitle + ":", breadcrumb: [["/", "Home"], ["/" + pluginUrl, pluginTitle], ["", path[2]]]}}, function(err,html){
+                res.write(html);
+            });
+        } else {
+            api.jade.renderFile(process.cwd() + '/views/404.jade',null, function(err,html){
+                res.write(html);
+            });
+        }
+    } else if(path[1].toLowerCase() == pluginUrl){
+        
+        var regex = new RegExp("commands_.*");
+        var channels = storage.keys().filter(function (x) { return regex.test(x); }).map(function (x) { return {channel: x.replace("commands_", "")}; });
+        
+        api.jade.renderFile(process.cwd() + '/views/channels.jade',{url: '/' + pluginUrl + '/', channels: channels, page: {title: pluginTitle, breadcrumb: [["/", "Home"], ["/" + pluginUrl, pluginTitle]]}}, function(err,html){
+            res.write(html);
+        });
+    } else {
+        if(req.collection == null) req.collection = [];
+        req.collection.push([pluginTitle, "/" + pluginUrl + "/", pluginTitle]);
+    }
+}
+
 module.exports = {
     meta_inf: {
         name: "Command Aliases",
@@ -86,9 +122,11 @@ module.exports = {
     start: function () {
         api.Events.on("userMsg", handleMessage);
         api.Events.on("whisper", handleMessage);
+        api.Events.on("http", servePage);
     },
     stop: function () {
         api.Events.removeListener("userMsg", handleMessage);
         api.Events.removeListener("whisper", handleMessage);
+        api.Events.removeListener("http", servePage);
     }
 }

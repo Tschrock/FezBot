@@ -48,7 +48,7 @@ var list = [
     "Get back all of you! This is MY BOOK and I'm going to READ IT!",
     "AJ, I think you're beating a dead.....tree.",
     "Does this count as camping?",
-    "Cross my heart and hope to fly, stick a cupcake in my— (poke) AARGH!",
+    "Cross my heart and hope to fly, stick a cupcake in my- (poke) AARGH!",
     //AJ
     "Don't you use your fancy mathematics to muddy the issue!",
     "Can't hear you, I'm asleep. *fake snoring noises*",
@@ -73,7 +73,7 @@ var list = [
     'It just needs a little, uh, TLC. || TLC as in "Tender Loving Care" or "Totally Lost Cause"?',
     "Cool...if you were actually victory-ful at something! || That's not a word! || What are you, a dictionary?",
     //PF
-    "Nervous? Don’t be ridiculous. You’re only facing a large crowd of ponies who will be watching your every move and silently judging you.",
+    "Nervous? Don't be ridiculous. You're only facing a large crowd of ponies who will be watching your every move and silently judging you.",
     "I have been looking for you everywhere. We have the thing at the place!",
     //Misc
     "This afternoon? As in 'this afternoon' this afternoon?",
@@ -88,7 +88,7 @@ function handleMessage(data) {
             if (cmds.length === 2 && isInt(cmds[1]) && parseInt(cmds[1]) > 0 && parseInt(cmds[1]) < (list.length + 1)) {
                 sendMessage(data, list[parseInt(cmds[1]) - 1] + "  (" + (parseInt(cmds[1])) + "/" + list.length + ")", data.whisper);
             } else if (cmds.length === 2 && cmds[1] === 'list') {
-                sendMessage(data, "List of quotes: https://gist.github.com/Tschrock/b382b8672f5468dca45f", data.whisper);
+                sendMessage(data, "List of quotes: " + (api["url"] ? (api.url.url + ":" + api.url.port + "/mlpquotes") : "https://gist.github.com/Tschrock/b382b8672f5468dca45f"), data.whisper);
             } else {
                 var rnum = Math.floor(Math.random() * list.length);
                 sendMessage(data, list[rnum] + "  (" + (rnum + 1) + "/" + list.length + ")", data.whisper);
@@ -113,6 +113,21 @@ function sendMessage(uData, txt, whisper) {
     }
 }
 
+function servePage(req,res) {
+    var path = req.url.split('/');
+    if(path[1].toLowerCase() == "mlpquotes"){
+        qlist = list.map(function (x, y) {
+            return {id: y+1, quote: x}
+        });
+        api.jade.renderFile(process.cwd() + '/views/list.jade',{list: qlist, page: {title: "MLP Quotes", subheader: "MLP Quotes:", breadcrumb: [["/", "Home"], ["/mlpquotes", "MLP Quotes"]]}}, function(err,html){
+            res.write(html);
+        });
+    } else {
+        if(req.collection == null) req.collection = [];
+        req.collection.push(["MLP Quotes","/mlpquotes/","Quotes from MLP."]);
+    }
+}
+
 module.exports = {
     meta_inf: {
         name: "mlpquote",
@@ -126,9 +141,11 @@ module.exports = {
     start: function () {
         api.Events.on("userMsg", handleMessage);
         api.Events.on("whisper", handleMessage);
+        api.Events.on("http", servePage);
     },
     stop: function () {
         api.Events.removeListener("userMsg", handleMessage);
         api.Events.removeListener("whisper", handleMessage);
+        api.Events.removeListener("http", servePage);
     }
 }
