@@ -287,6 +287,7 @@ function initServer(url) {
                     console.error("Unable to listen on port", url.port, error);
                     return;
                 } else {
+                    api.url = url;
                     console.log("Enter " + url.url + ":" + url.port + " in a browser to access web functions.");
                 }
             } else {
