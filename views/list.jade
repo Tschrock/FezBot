@@ -1,0 +1,28 @@
+doctype html
+html
+    include ./includes/head.jade
+        style.
+            .list td{
+                padding: 7px 4px;
+            }
+            .list .id {
+                text-align: right;
+            }
+            .id:after {
+                content: ".";
+            }
+    body
+        .container
+            include ./includes/header.jade
+            h3= page && page.subheader ? page.subheader : "List:"
+            table.list.table
+                - if (typeof listHeader != 'undefined')
+                    thead
+                        tr
+                            - for(var i = 0; i < listHeader.length; ++i)
+                                th= listHeader[i]
+                tbody
+                    - for(var i = 0; i < list.length; ++i)
+                        tr(id=list[i]["id"] || i)
+                            - for(var prop in list[i])
+                                td(class=prop)!= list[i][prop]
