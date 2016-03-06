@@ -130,10 +130,16 @@ function servePage(req,res) {
 
 module.exports = {
     meta_inf: {
-        name: "mlpquote",
+        name: "MLP Quotes",
         version: "1.0.0",
-        description: "Shows a random quote",
-        author: "Tschrock (CyberPon3)"
+        description: "Shows a random quote.",
+        author: "Tschrock (CyberPon3)",
+        pluginurl: "/mlpquotes",
+        commandhelp: [
+            {command: "!mlpquote", usage: "!mlpquote", description: "Says a random MLP quote.", permission: "cmd.mlpquote"},
+            {command: "!mlpquote", usage: "!mlpquote [id]", description: "Says the MLP quote.", permission: "cmd.mlpquote"},
+            {command: "!mlpquote", usage: "!mlpquote list", description: "Links to a list of available quotes.", permission: "cmd.mlpquote"}
+        ]
     },
     load: function (_api) {
         api = _api;

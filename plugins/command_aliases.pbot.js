@@ -15,7 +15,7 @@ function handleMessage(data) {
                     storage.setItem("commands_" + data.channel, commands);
                     sendMessage(data, "Added '!" + pars[1].toLowerCase().replace(/^!/, '') + "' command.", true);
                 } else {
-                    sendMessage(data, "Usage: !addalias <command> <cmdmessage...>", true);
+                    sendMessage(data, "Usage: !addalias <alias> <command...>", true);
                 }
             } else {
                 sendMessage(data, "Sorry, you don't have permission to use this command.", true);
@@ -113,7 +113,13 @@ module.exports = {
         name: "Command Aliases",
         version: "1.0.0",
         description: "Allows to create command aliases",
-        author: "Tschrock (CyberPon3)"
+        author: "Tschrock (CyberPon3)",
+        pluginurl: "/" + pluginUrl,
+        commandhelp: [
+            {command: "!addalias", usage: "!addalias <alias> <command...>", description: "Creates an alias for a command. Use '$args' to pass along the alias's arguments.", permission: "cmd.addalias"},
+            {command: "!delalias", usage: "!delalias <alias>", description: "Removes an alias.", permission: "cmd.delalias"},
+            {command: "!lsalias", usage: "!lsalias", description: "Lists all aliases.", permission: "cmd.addalias"}
+        ]
     },
     load: function (_api, _storage) {
         api = _api;

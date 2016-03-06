@@ -55,7 +55,6 @@ api.permissions_manager = {
     __permsCache: {},
     __defaultLevel: 6,
     getPerm: function (channel, pId, defaultPermLevel) {
-        channel = channel.toLowerCase();
         this.__permsCache = store.getItem("permissions") || {};
         this.__permsCache[channel] = this.__permsCache[channel] || {};
         return this.__permsCache[channel][pId] = (typeof this.__permsCache[channel][pId] !== 'undefined') ? this.__permsCache[channel][pId] : {id: pId, level: (typeof defaultPermLevel !== 'undefined' ? defaultPermLevel : this.PERMISSION_ADMIN | this.PERMISSION_MOD), whitelist: [], blacklist: []};
@@ -89,7 +88,7 @@ api.permissions_manager = {
         return store.getItem("admins") || [];
     },
     userHasPermission: function (user, pId, defaultPermLevel) { // !onblacklist && (permLevelCheck || (onwhitelist && registered))
-        var p = this.getPerm(user.channel.toLowerCase(), pId, defaultPermLevel);
+        var p = this.getPerm(user.channel, pId, defaultPermLevel);
         return !(p.blacklist.indexOf(user.username) !== -1) && (((p.level & this.getUserPermissionLevel(user)) !== 0) || ((p.whitelist.indexOf(user.username) !== -1) && user.registered));
     },
     getUserPermissionLevel: function (userData) {
@@ -137,6 +136,13 @@ api.permissions_manager = {
             perm.blacklist.splice(index, 1);
         }
         this.savePerms();
+    },
+    getAllPermissions: function() {
+        return this.__permsCache = store.getItem("permissions") || {};
+    },
+    deletePermission: function (channel, permissionId) {
+        delete this.__permsCache[channel][permissionId];
+        this.savePerms();
     }
 };
 
@@ -177,6 +183,16 @@ api.timeout_manager = {
     __timeoutMsCache: {},
     __currentTimeoutsTimes: {},
     __defaultMs: 15000,
+    getTimeoutMs: function (channel, tId, defaultMs) {
+        this.__timeoutMsCache = store.getItem("timeouts") || {};
+        this.__timeoutMsCache[channel] = this.__timeoutMsCache[channel] || {};
+        this.__timeoutMsCache[channel][tId] = (typeof this.__timeoutMsCache[channel][tId] !== 'undefined') ? this.__timeoutMsCache[channel][tId] : (typeof defaultMs !== 'undefined' ? defaultMs : this.__defaultMs);
+        this.saveTimeoutMs();
+        return this.__timeoutMsCache[channel][tId];
+    },
+    saveTimeoutMs: function () {
+        store.setItem("timeouts", this.__timeoutMsCache);
+    },
     getTimeoutTime: function (channel, id) {
         this.__currentTimeoutsTimes[channel.toLowerCase()] = this.__currentTimeoutsTimes[channel.toLowerCase()] || {};
         return this.__currentTimeoutsTimes[channel.toLowerCase()][id] = this.__currentTimeoutsTimes[channel.toLowerCase()][id] || 0;
@@ -192,21 +208,16 @@ api.timeout_manager = {
         return Math.max(0, (this.getTimeoutMs(channel, id, defaultMs) - (Date.now() - this.getTimeoutTime(channel, id))));
     },
     setTimeout: function (channel, id, ms) {
-        this.__timeoutMsCache[channel.toLowerCase()] = this.__timeoutMsCache[channel.toLowerCase()] || {};
-        this.__timeoutMsCache[channel.toLowerCase()][id] = ms;
+        this.__timeoutMsCache[channel] = this.__timeoutMsCache[channel] || {};
+        this.__timeoutMsCache[channel][id] = ms;
         this.saveTimeoutMs();
     },
     clearTimeout: function(channel, id) {
         this.__currentTimeoutsTimes[channel.toLowerCase()] = this.__currentTimeoutsTimes[channel.toLowerCase()] || {};
         this.__currentTimeoutsTimes[channel.toLowerCase()][id] = 0;
     },
-    getTimeoutMs: function (channel, id, defaultMs) {
-        this.__timeoutMsCache = store.getItem("timeouts") || {};
-        this.__timeoutMsCache[channel.toLowerCase()] = this.__timeoutMsCache[channel.toLowerCase()] || {};
-        return this.__timeoutMsCache[channel.toLowerCase()][id] || (typeof defaultMs !== 'undefined' ? defaultMs : this.__defaultMs);
-    },
-    saveTimeoutMs: function () {
-        store.setItem("timeouts", this.__timeoutMsCache);
+    getAllTimeoutMs: function() {
+        return this.__timeoutMsCache = store.getItem("timeouts") || {};
     }
 };
 

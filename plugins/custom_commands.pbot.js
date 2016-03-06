@@ -11,9 +11,11 @@ function handleMessage(data) {
         if (cmd === '!addcmd' || cmd === '!setcmd') {
             if (api.permissions_manager.userHasPermission(data, "cmd.addcmd") || api.permissions_manager.userHasPermission(data, "cmd.setcmd") || api.permissions_manager.isOwner(data)) {
                 if (pars.length > 2) {
-                    messages[pars[1].toLowerCase().replace(/^!/, '')] = pars.slice(2).join(' ');
+                    var msgcmd = pars[1].toLowerCase().replace(/^!/, '');
+                    var msg = pars.slice(2).join(' ');
+                    messages[msgcmd] = msg;
                     storage.setItem("messages_" + data.channel, messages);
-                    sendMessage(data, "Set command !" + pars[1].toLowerCase().replace(/^!/, '') + " to '" + pars.slice(2).join(' ') + "'", data.whisper);
+                    sendMessage(data, "Set command !" + msgcmd + " to '" + msg.substr(0, 30) + (msg.length > 30 ? "..." : "") + "'", data.whisper);
                 } else {
                     sendMessage(data, "Usage: !addcmd <command> <message...>", true);
                 }
@@ -26,6 +28,7 @@ function handleMessage(data) {
                 if (pars.length > 1) {
                     delete messages[pars[1].toLowerCase().replace(/^!/, '')];
                     storage.setItem("messages_" + data.channel, messages);
+                    api.permissions_manager.deletePermission(data.channel, "cmd." + pars[1].toLowerCase().replace(/^!/, ''));
                     sendMessage(data, "Removed command !" + pars[1].toLowerCase().replace(/^!/, ''), data.whisper);
                 } else {
                     sendMessage(data, "Usage: !delcmd <command>", true);
@@ -106,7 +109,13 @@ module.exports = {
         name: "Custom Commands",
         version: "1.0.0",
         description: "Create commands to say premade messages.",
-        author: "Tschrock (CyberPon3)"
+        author: "Tschrock (CyberPon3)",
+        pluginurl: "/custom_commands",
+        commandhelp: [
+            {command: "!addcmd", usage: "!addcmd <command> <message...>", description: "Adds a command that says a message.", permission: "cmd.addcmd"},
+            {command: "!delcmd", usage: "!delcmd <command>", description: "Removes a message command..", permission: "cmd.delcmd"},
+            {command: "!lscmd", usage: "!lscmd", description: "Lists message commands.", permission: "cmd.lscmd"}
+        ]
     },
     load: function (_api, _storage) {
         api = _api;

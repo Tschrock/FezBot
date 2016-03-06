@@ -3,23 +3,26 @@ var api;
 function handleMessage(data) {
     if (data.msg.toLowerCase().startsWith("!random")) {
         if (api.permissions_manager.userHasPermission(data, "cmd.random") || api.permissions_manager.isOwner(data)) {
-            var cData = api.user_manager.__currentUserData || {};
-            var uData = cData[data.channel.toLowerCase()] || {};
+            
+            var currentUserList = api.user_manager.__currentUserData[data.channel.toLowerCase()] || {};
+            
             var userArr = [];
-            for(var dat in uData) {
-                if (api.permissions_manager.userHasPermission(uData[dat], "cmd.random.include", api.permissions_manager.PERMISSION_USER) && !api.user_manager.isBot(data)) {
-                    userArr.push(uData[dat]);
+            for(var userId in currentUserList) {
+                var user = currentUserList[userId];
+                if (api.permissions_manager.userHasPermission(user, "cmd.random.include", api.permissions_manager.PERMISSION_USER) && !api.user_manager.isBot(user)) {
+                    userArr.push(user);
                 }
             }
-            var ritem = userArr[Math.floor(Math.random() * userArr.length)];
             
-            if (typeof ritem !== 'undefined') {
-                sendMessage(data, "Random user: *[" + ritem.username + "]", data.whisper);
+            var randomUser = userArr[Math.floor(Math.random() * userArr.length)];
+            
+            if (typeof randomUser !== 'undefined') {
+                sendMessage(data, "Random user: *[" + randomUser.username + "]", data.whisper);
             } else {
                 sendMessage(data, "Error getting random user from list!", data.whisper);
                 console.log("Error getting random user from list!");
                 console.log(userArr);
-                console.log(ritem);
+                console.log(randomUser);
             }
         } else {
             sendMessage(data, "Sorry, you don't have permission to use this command.", true);

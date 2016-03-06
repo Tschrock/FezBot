@@ -4,7 +4,7 @@ function handleMsg(data) {
         var pars = data.msg.split(' ');
         var cmd = pars[0].toLowerCase();
         
-        if(api.permissions_manager.userHasPermission(data, "cmd.perm") || api.permissions_manager.isOwner(data)){
+        if(api.permissions_manager.userHasPermission(data, "cmd.mute") || api.permissions_manager.isOwner(data)){
             if (cmd === '!mute') {
                 api.Messages.send("Bye...",data.channel);
                 api.mute_manager.mute(data.channel);
@@ -22,7 +22,11 @@ module.exports = {
         name: "Mute",
         version: "1.0.0",
         description: "Allows Streamers and Global Admins to mute the bot",
-        author: "Amm"
+        author: "Amm",
+        commandhelp: [
+            {command: "!mute", usage: "!mute", description: "Mutes the bot.", permission: "cmd.mute"},
+            {command: "!unmute", usage: "!unmute", description: "Unmutes the bot.", permission: "cmd.mute"}
+        ]
     },
     load: function (_api) {
         api = _api;

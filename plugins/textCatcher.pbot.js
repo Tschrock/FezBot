@@ -11,9 +11,9 @@ function handleMsg(data) {
             msgs++;
             storage.setItem("boops", msgs);
             if (api.botName[data.channel.toLowerCase()] && data.msg.toLowerCase().indexOf("boops " + api.botName[data.channel.toLowerCase()].toLowerCase()) !== -1) {
-                api.Messages.send("\me boops " + data.username, data.channel);
+                api.Messages.send("/me boops " + data.username, data.channel);
             }
-            else if (api.timeout_manager.checkTimeout(data.channel, "trigger.boop", 20000)) {
+            else if (api.timeout_manager.checkTimeout(data.channel, "trigger.boop", 30000)) {
                 api.Messages.send("boop", data.channel);
             }
 
@@ -27,6 +27,19 @@ function handleMsg(data) {
                 api.Messages.send("♫ Like a record, baby, Right round round round ♫", data.channel);
             }
         }
+        else if(data.msg.toLowerCase().indexOf("never gonna give you up") !== -1) {
+            if (api.timeout_manager.checkTimeout(data.channel, "trigger.rickroll", 60000)) {
+                api.Messages.send("Never gonna let you down!", data.channel);
+            }
+        }
+        else if(data.msg.indexOf("youtube.com/watch?v=dQw4w9WgXcQ") !== -1) {
+            if (api.timeout_manager.checkTimeout(data.channel, "trigger.rickroll2", 40000)) {
+                api.Messages.send("You can't Rick-Roll me that easily!", data.channel);
+            }
+        }
+        
+        
+        
     }
     if (data.msg.toLowerCase().startsWith("!boops")) {
         if (api.timeout_manager.checkTimeout(data.channel, "cmd.boops")) {

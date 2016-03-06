@@ -2,14 +2,14 @@ doctype html
 html
     include ./includes/head.jade
         style.
-            table td{
-                padding: 5px;
+            .list td{
+                padding: 7px 4px;
             }
     body
         .container
             include ./includes/header.jade
             p Here is a list of the avaliable URLs:
-            table
+            table.list.table
                 each url in urls
                     tr 
                         td 

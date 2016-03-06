@@ -97,12 +97,68 @@ function sendMessage(txt, whisperUser, channel) {
     }
 }
 
+function servePage(req, res) {
+    var path = req.url.split('/');
+    if (path.length > 2 && path[1].toLowerCase() == "permissions" && path[2] != '') {
+
+        var permissions = api.permissions_manager.__permsCache || {};
+        if (permissions[path[2]]) {
+            var permissionList = [];
+            
+            for (var perm in permissions[path[2]]) {
+                var p = permissions[path[2]][perm];
+                var permListObj = {};
+                permListObj.permissionId = perm;
+                permListObj.allowedRoles = ((((p.level & api.permissions_manager.PERMISSION_USER) !== 0) ? "Users, " : "") +
+                        (((p.level & api.permissions_manager.PERMISSION_ADMIN) !== 0) ? "Admins, " : "") +
+                        (((p.level & api.permissions_manager.PERMISSION_MOD) !== 0) ? "Mods, " : "") +
+                        (((p.level & api.permissions_manager.PERMISSION_PTVADMIN) !== 0) ? "PTVAdmins, " : "")).replace(/, $/, "");
+                permListObj.whitelist = p.whitelist.join(", ");
+                permListObj.blacklist = p.blacklist.join(", ");
+                permissionList.push(permListObj);
+            }
+            
+            permissionList.sort(function (a, b) { return a.permissionId.localeCompare(b.permissionId);})
+
+            api.jade.renderFile(process.cwd() + '/views/list.jade', {listHeader: ["PermissionId", "Allowed Roles", "Whitelist", "Blacklist"], list: permissionList, page: {title: path[2] + "'s Channel Permissions", subheader: path[2] + "'s Channel Permissions", breadcrumb: [["/", "Home"], ["/permissions", "Permissions"], ["/" + path[2], path[2]]]}}, function (err, html) {
+                res.write(html);
+            });
+        } else {
+            api.jade.renderFile(process.cwd() + '/views/404.jade', null, function (err, html) {
+                res.write(html);
+            });
+        }
+    } else if (path[1].toLowerCase() == "permissions") {
+        var permissions = api.permissions_manager.getAllPermissions();
+        var channels = [];
+        for (var perm in permissions) {
+            channels.push(perm);
+        }
+        channels = channels.map(function (x) {
+            return {channel: x};
+        });
+
+        api.jade.renderFile(process.cwd() + '/views/channels.jade', {url: '/permissions/', channels: channels, page: {title: "Permissions", breadcrumb: [["/", "Home"], ["/permissions", "Permissions"]]}}, function (err, html) {
+            res.write(html);
+        });
+    } else {
+        if (req.collection == null)
+            req.collection = [];
+        req.collection.push(["Permissions", "/permissions/", "View permissions for the bot."]);
+    }
+}
+
 module.exports = {
     meta_inf: {
         name: "Permissions Manager",
         version: "1.0.0",
         description: "Manages Permissions",
-        author: "Tschrock (CyberPon3)"
+        author: "Tschrock (CyberPon3)",
+        pluginurl: "/permissions",
+        commandhelp: [
+            {command: "!perm", usage: "!perm <permissionId> <add | del> {users,mods,admins,padmins}", description: "Add or remove a Rank from a permission.", permission: "cmd.perm"},
+            {command: "!perm", usage: "!perm <permissionId> <whitelist | unwhitelist | blacklist | unblacklist> <username>", description: "Add/Remove a person from the white/blacklist of a permission.", permission: "cmd.perm"}
+        ]
     },
     load: function (_api) {
         api = _api;
@@ -110,9 +166,11 @@ module.exports = {
     start: function () {
         api.Events.on("userMsg", newMessage);
         api.Events.on("whisper", newWhisper);
+        api.Events.on("http", servePage);
     },
     stop: function () {
         api.Events.removeListener("userMsg", newMessage);
         api.Events.removeListener("whisper", newWhisper);
+        api.Events.removeListener("http", servePage);
     }
 }
