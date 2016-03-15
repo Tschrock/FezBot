@@ -8,7 +8,6 @@ function handleMessage(data) {
         if (cmd === '!settimeout') {
             if (api.permissions_manager.userHasPermission(data, "cmd.settimeout") || api.permissions_manager.isOwner(data)) {
                 if (pars.length === 3 && isInt(pars[2])) {
-                    console.log(pars);
                     api.timeout_manager.setTimeout(data.channel, pars[1], parseInt(pars[2]));
                     sendMessage(data, "Set timeout " + pars[1] + " to " + pars[2], true);
                 } else {
@@ -118,6 +117,7 @@ module.exports = {
         version: "1.0.0",
         description: "Manages Timeouts",
         author: "Tschrock (CyberPon3)",
+        pluginurl: "/timeouts",
         commandhelp: [
             {command: "!settimeout", usage: "!settimeout <timeoutId> <milisecconds>", description: "Sets a timeout/cooldown.", permission: "cmd.settimeout"},
             {command: "!resettimeout", usage: "!resettimeout <timeoutId>", description: "Clears the time remaining for a timeout/cooldown.", permission: "cmd.resettimeout"}

@@ -28,6 +28,8 @@ function parsePermLevel(str) {
                 break;
             case "padmin":
             case "padmins":
+            case "ptvadmin":
+            case "ptvadmins":
                 lvl += api.permissions_manager.PERMISSION_PTVADMIN;
                 break;
         }
