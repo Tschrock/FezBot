@@ -15,6 +15,44 @@ function getChannel(stream) {
     return stream
 }
 
+function getTokenForAccount(stream, username, password) {
+    return new Promise(function (resolve, reject) {
+        jsdom.env({
+            url: "https://picarto.tv/" + getChannel(stream),
+            features: {
+                FetchExternalResources: ["script"],
+                ProcessExternalResources: ["script"]
+            },
+            done: function (error, window) {
+                if (error) {
+                    console.log(error);
+                    reject("jsdom error");
+                }
+                var $ = window.$;
+                try {
+                    $.post("process/login", {username: username, password: password, staylogged: false}, function (a) {
+                        console.log(a);
+                        if (a.loginstatus) {
+                            $.get("/modules/channel-chat", function (a) {
+                                $("#channel_chat").html(a);
+                                resolve({
+                                    token: getTokenFromHTML($("body").html()),
+                                    readOnly: false
+                                });
+                            });
+                        }
+                        else {
+                            reject("auth failure");
+                        }
+                    }, "json");
+                } catch (e) {
+                    reject("channelDoesNotExist");
+                }
+            }
+        });
+    });
+}
+
 function getToken(stream, name) {
     return new Promise(function (resolve, reject) {
         jsdom.env({
@@ -98,6 +136,7 @@ function getROToken(stream) {
 module.exports = {
     getTokenFromHTML: getTokenFromHTML,
     getChannel: getChannel,
+    getTokenForAccount: getTokenForAccount,
     getToken: getToken,
     getROToken: getROToken
 }

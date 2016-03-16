@@ -486,12 +486,14 @@ plugin_loader.listPlugins().forEach(function (item) {
 var token;
 var name;
 var channel;
+var password;
 config.http = config.http || {};
 if (process.env.PICARTO_TOKEN) token = process.env.PICARTO_TOKEN;
 if (process.env.PICARTO_CHANNEL) channel = process.env.PICARTO_CHANNEL;
 if (process.env.PICARTO_NAME) name = process.env.PICARTO_NAME;
 if (process.env.PICARTO_PORT) config.http.port = process.env.PICARTO_PORT;
 if (process.env.PICARTO_URL) config.http.url = process.env.PICARTO_URL;
+if (process.env.PICARTO_PASSWORD) password = process.env.PICARTO_PASSWORD;
 
 // Load commandline args as env variables
 commander.version(api.version).usage("[options]")
@@ -500,12 +502,14 @@ commander.version(api.version).usage("[options]")
 .option("-t, --token <Token>", "Use an already existing token to login")
 .option("-p, --port <Port>","Set a custom port")
 .option("-u, --url <URL>","Set a custom URL")
+.option("-l, --password <Password>","Use the given password.")
 .parse(process.argv);
 if (commander.token) token = commander.token;
 if (commander.botname) name = commander.botname;
 if (commander.channel) channel = commander.channel;
 if (commander.port) config.http.port = commander.port;
 if (commander.url) config.http.url = commander.url;
+if (commander.password) password = commander.password;
 
 if(config.http){
     if(config.http.enabled){
@@ -516,9 +520,20 @@ if(config.http){
 }
 
 var SET_PICARTO_LOGIN = 0;
-if (token) {
+if (channel && name && token) {
     console.log("Attempting token based connection, please be patient...");
-    initSocket(token);
+    initSocket(token, channel);
+    api.readOnly[channel.toLowerCase()] = false; // Assume that token auth means chat != readonly
+    api.botName[channel.toLowerCase()] = name;
+} else if (channel && name && password) {
+    console.log("Attempting to connect with given auth, this might take a moment. Please be patient...");
+    picarto.getTokenForAccount(channel, name, password).then(function (res) {
+        console.log(res);
+        initSocket(res.token,channel, res.sid);
+        api.readOnly[channel.toLowerCase()] = res.readOnly;
+        api.botName[channel.toLowerCase()] = name;
+        if (res.readOnly) console.log("Chat disabled! Establishing ReadOnly Connection.");
+    }).catch(function (reason) { console.log("Token acquisition failed: " + reason);});
 } else if (channel && name) {
     console.log("Attempting to connect, this might take a moment. Please be patient...");
     picarto.getToken(channel, name).then(function (res) {
