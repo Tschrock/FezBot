@@ -117,7 +117,7 @@ api.permissions_manager = {
     unwhitelistUser: function (channel, permissionId, username) {
         var perm = this.getPerm(channel, permissionId);
         var index = perm.whitelist.indexOf(username.toLowerCase());
-        if (index === -1) {
+        if (index != -1) {
             perm.whitelist.splice(index, 1);
         }
         this.savePerms();
@@ -132,7 +132,7 @@ api.permissions_manager = {
     unblacklistUser: function (channel, permissionId, username) {
         var perm = this.getPerm(channel, permissionId);
         var index = perm.blacklist.indexOf(username.toLowerCase());
-        if (index === -1) {
+        if (index != -1) {
             perm.blacklist.splice(index, 1);
         }
         this.savePerms();
