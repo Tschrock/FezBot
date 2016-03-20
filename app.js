@@ -57,7 +57,11 @@ api.permissions_manager = {
     getPerm: function (channel, pId, defaultPermLevel) {
         this.__permsCache = store.getItem("permissions") || {};
         this.__permsCache[channel] = this.__permsCache[channel] || {};
-        return this.__permsCache[channel][pId] = (typeof this.__permsCache[channel][pId] !== 'undefined') ? this.__permsCache[channel][pId] : {id: pId, level: (typeof defaultPermLevel !== 'undefined' ? defaultPermLevel : this.PERMISSION_ADMIN | this.PERMISSION_MOD), whitelist: [], blacklist: []};
+        if(!this.__permsCache[channel][pId]) {
+            this.__permsCache[channel][pId] = {id: pId, level: (typeof defaultPermLevel !== 'undefined' ? defaultPermLevel : this.PERMISSION_ADMIN | this.PERMISSION_MOD), whitelist: [], blacklist: []};
+            this.savePerms();
+        }
+        return this.__permsCache[channel][pId];
     },
     savePerms: function () {
         store.setItem("permissions", this.__permsCache);
@@ -186,8 +190,10 @@ api.timeout_manager = {
     getTimeoutMs: function (channel, tId, defaultMs) {
         this.__timeoutMsCache = store.getItem("timeouts") || {};
         this.__timeoutMsCache[channel] = this.__timeoutMsCache[channel] || {};
-        this.__timeoutMsCache[channel][tId] = (typeof this.__timeoutMsCache[channel][tId] !== 'undefined') ? this.__timeoutMsCache[channel][tId] : (typeof defaultMs !== 'undefined' ? defaultMs : this.__defaultMs);
-        this.saveTimeoutMs();
+        if (!this.__timeoutMsCache[channel][tId]) {
+            this.__timeoutMsCache[channel][tId] = (typeof this.__timeoutMsCache[channel][tId] !== 'undefined') ? this.__timeoutMsCache[channel][tId] : (typeof defaultMs !== 'undefined' ? defaultMs : this.__defaultMs);
+            this.saveTimeoutMs();
+        }
         return this.__timeoutMsCache[channel][tId];
     },
     saveTimeoutMs: function () {
@@ -334,20 +340,26 @@ function initSocket(token,channel) {
         api.user_manager.updateUserList(channel, data);
         api.Events.emit("channelUsers", data, channel);
     }).on("userMsg", function (data) {
-        if(inputLog.indexOf(data.id) == -1){
-            inputLog.push(data.id);
-            if(inputLog.length > 50) inputLog.shift();
-            data.msg = entities.decode(data.msg);
-            data.channel = channel;
-            data.whisper = false;
-            api.Events.emit("userMsg", api.user_manager.updateUserData(data));
-        } else {
-            api.Events.emit("userMsgDuplicate", api.user_manager.updateUserData(data));
+        var il = store.getItem("msgIdLog") || [];
+        if(il.indexOf(data.id) == -1){
+            il.push(data.id);
+            if(il.length > 50) inputLog.shift();
+            store.setItem("msgIdLog", il);
+            data.duplicate = false;
         }
+        else {
+            data.duplicate = true;
+        }
+        data.msg = entities.decode(data.msg);
+        data.channel = channel;
+        data.whisper = false;
+        api.Events.emit(data.duplicate ? "userMsgDuplicate" : "userMsg", api.user_manager.updateUserData(data));
     }).on("meMsg", function (data) {
-        if(inputLog.indexOf(data.id) == -1){
-            inputLog.push(data.id);
-            if(inputLog.length > 50) inputLog.shift();
+        var il = store.getItem("msgIdLog") || [];
+        if(il.indexOf(data.id) == -1){
+            il.push(data.id);
+            if(il.length > 50) inputLog.shift();
+            store.setItem("msgIdLog", il);
             data.msg = entities.decode(data.msg);
             data.channel = channel;
             data.whisper = false;
