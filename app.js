@@ -52,6 +52,7 @@ api.permissions_manager = {
     PERMISSION_ADMIN: 2,
     PERMISSION_MOD: 4,
     PERMISSION_PTVADMIN: 8,
+    PERMISSION_ALL: 15,
     __permsCache: {},
     __defaultLevel: 6,
     getPerm: function (channel, pId, defaultPermLevel) {
@@ -188,6 +189,7 @@ api.timeout_manager = {
     __currentTimeoutsTimes: {},
     __defaultMs: 15000,
     getTimeoutMs: function (channel, tId, defaultMs) {
+        tId = tId.toLowerCase();
         this.__timeoutMsCache = store.getItem("timeouts") || {};
         this.__timeoutMsCache[channel] = this.__timeoutMsCache[channel] || {};
         if (!this.__timeoutMsCache[channel][tId]) {
@@ -200,10 +202,12 @@ api.timeout_manager = {
         store.setItem("timeouts", this.__timeoutMsCache);
     },
     getTimeoutTime: function (channel, id) {
+        id = id.toLowerCase();
         this.__currentTimeoutsTimes[channel.toLowerCase()] = this.__currentTimeoutsTimes[channel.toLowerCase()] || {};
         return this.__currentTimeoutsTimes[channel.toLowerCase()][id] = this.__currentTimeoutsTimes[channel.toLowerCase()][id] || 0;
     },
     checkTimeout: function (channel, id, defaultMs) {
+        id = id.toLowerCase();
         if (Date.now() - this.getTimeoutTime(channel, id) > this.getTimeoutMs(channel, id, defaultMs)) {
             this.__currentTimeoutsTimes[channel.toLowerCase()][id] = Date.now();
             return true;
@@ -211,14 +215,17 @@ api.timeout_manager = {
         return false;
     },
     getTimeRemaining: function (channel, id, defaultMs) {
+        id = id.toLowerCase();
         return Math.max(0, (this.getTimeoutMs(channel, id, defaultMs) - (Date.now() - this.getTimeoutTime(channel, id))));
     },
     setTimeout: function (channel, id, ms) {
+        id = id.toLowerCase();
         this.__timeoutMsCache[channel] = this.__timeoutMsCache[channel] || {};
         this.__timeoutMsCache[channel][id] = ms;
         this.saveTimeoutMs();
     },
     clearTimeout: function(channel, id) {
+        id = id.toLowerCase();
         this.__currentTimeoutsTimes[channel.toLowerCase()] = this.__currentTimeoutsTimes[channel.toLowerCase()] || {};
         this.__currentTimeoutsTimes[channel.toLowerCase()][id] = 0;
     },
