@@ -1,8 +1,8 @@
 var api;
 
 function handleMessage(data) {
-    if (data.msg.toLowerCase().startsWith("!ship")) {
-        if (api.permissions_manager.userHasPermission(data, "cmd.ship") || api.permissions_manager.isOwner(data)) {
+    if (data.msg.toLowerCase().split(' ')[0] === "!ship") {
+        if (api.permissions_manager.userHasPermission(data, "cmd.ship", api.permissions_manager.PERMISSION_ADMIN | api.permissions_manager.PERMISSION_MOD | api.permissions_manager.PERMISSION_PTVADMIN | api.permissions_manager.PERMISSION_USER) || api.permissions_manager.isOwner(data)) {
             if (data.whisper || api.timeout_manager.checkTimeout(data.channel, "cmd.ship", 20000) || api.permissions_manager.userHasPermission(data, "timeoutbypass.global") || api.permissions_manager.userHasPermission(data, "timeoutbypass.cmd.ship")) {
 
 
@@ -67,7 +67,8 @@ module.exports = {
         description: "Ships 2 random users.",
         author: "Tschrock (CyberPon3)",
         commandhelp: [
-            {command: "!ship", usage: "!ship", description: "Ships 2 random users in chat.", permission: "cmd.ship"}
+            {command: "!ship", usage: "!ship", description: "Ships 2 random users in chat.", permission: "cmd.ship"},
+            {command: "!ship", usage: "!ship <something...>", description: "Ships something with a random user in chat.", permission: "cmd.ship"}
         ]
     },
     load: function (_api) {

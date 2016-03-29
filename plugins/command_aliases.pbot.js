@@ -11,9 +11,10 @@ function handleMessage(data) {
         if (cmd === '!addalias' || cmd === '!setalias') {
             if (api.permissions_manager.userHasPermission(data, "cmd.addalias") || api.permissions_manager.isOwner(data)) {
                 if (pars.length > 2) {
-                    commands[pars[1].toLowerCase().replace(/^!/, '')] = pars.slice(2).join(' ');
+                    var alias = pars[1].toLowerCase().replace(/^!/, '');
+                    commands[alias] = pars.slice(2).join(' ');
                     storage.setItem("commands_" + data.channel, commands);
-                    sendMessage(data, "Added '!" + pars[1].toLowerCase().replace(/^!/, '') + "' command.", true);
+                    sendMessage(data, "Added '!" + alias + "' command.", true);
                 } else {
                     sendMessage(data, "Usage: !addalias <alias> <command...>", true);
                 }
@@ -24,9 +25,10 @@ function handleMessage(data) {
         } else if (cmd === '!delalias') {
             if (api.permissions_manager.userHasPermission(data, "cmd.delalias") || api.permissions_manager.isOwner(data)) {
                 if (pars.length > 1) {
-                    delete commands[pars[1].toLowerCase().replace(/^!/, '')];
+                    var alias = pars[1].toLowerCase().replace(/^!/, '');
+                    delete commands[alias];
                     storage.setItem("commands_" + data.channel, commands);
-                    sendMessage(data, "Removed '!" + pars[1].toLowerCase().replace(/^!/, '') + "' command.", true);
+                    sendMessage(data, "Removed '!" + alias + "' command.", true);
                 } else {
                     sendMessage(data, "Usage: !delalias <command>", true);
                 }
@@ -45,14 +47,14 @@ function handleMessage(data) {
                 sendMessage(data, "Sorry, you don't have permission to use this command.", true);
             }
 
-        } else if (typeof commands[cmd.replace(/^!/, '')] !== 'undefined') {
-            msgcmd = cmd.replace(/^!/, '');
-            if (api.timeout_manager.checkTimeout(data.channel, "cmd." + msgcmd, 20000) || api.permissions_manager.userHasPermission(data, "timeoutbypass.global") || api.permissions_manager.userHasPermission(data, "timeoutbypass.cmd." + msgcmd)) {
-                if (api.permissions_manager.userHasPermission(data, "cmd." + msgcmd) || api.permissions_manager.isOwner(data)) {
+        } else if (commands[cmd.replace(/^!/, '')]) {
+            var msgcmd = cmd.replace(/^!/, '');
+            if (data.whisper || api.timeout_manager.checkTimeout(data.channel, "cmd." + msgcmd, 0) || api.permissions_manager.userHasPermission(data, "timeoutbypass.global") || api.permissions_manager.userHasPermission(data, "timeoutbypass.cmd." + msgcmd)) {
+                if (api.permissions_manager.userHasPermission(data, "cmd." + msgcmd, api.permissions_manager.PERMISSION_ALL) || api.permissions_manager.isOwner(data)) {
                     var newData = api.user_manager.mergeUserData({}, data);
                     newData.msg = commands[cmd.replace(/^!/, '')].replace('$args', pars.slice(1).join(' '));
                     newData.id += '_';
-                    newData.fromAlias = true;
+                    newData.fromAlias = msgcmd;
                     api.Events.emit(data.whisper ? "whisper" : "userMsg", newData);
                 } else {
                     sendMessage(data, "Sorry, you don't have permission to use this command.", true);
@@ -72,49 +74,84 @@ function sendMessage(uData, txt, whisper) {
     }
 }
 
-var pluginUrl = "command_aliases";
 var pluginTitle = "Command Aliases";
+var pluginUrl = "command_aliases";
+var pluginUrlAbs = "/" + pluginUrl;
+var commands_regex = new RegExp("commands_.*");
 
-function servePage(req,res) {
+function servePage(req, res) {
     var path = req.url.split('/');
-    
-    if(path.length > 2 && path[1].toLowerCase() == pluginUrl && path[2] != ''){
-        
+
+    if (path.length > 2 && path[1].toLowerCase() === pluginUrl && path[2] !== '') {
+
         var cmds = storage.getItem("commands_" + path[2]) || false;
-        if(cmds){
+        if (cmds) {
             cmdMsgs = [];
-            for(var cmd in cmds) {
+            for (var cmd in cmds) {
                 cmdMsgs.push({command: "!" + cmd, message: cmds[cmd]});
             }
-            api.jade.renderFile(process.cwd() + '/views/list.jade',{listHeader: ["Alias", "Command"], list: cmdMsgs, page: {title: path[2] + " " + pluginTitle, subheader: path[2] + "'s " + pluginTitle + ":", breadcrumb: [["/", "Home"], ["/" + pluginUrl, pluginTitle], ["", path[2]]]}}, function(err,html){
-                res.write(html);
-            });
+            api.jade.renderFile(
+                    process.cwd() + '/views/list.jade',
+                    {
+                        listHeader: ["Alias", "Command"],
+                        list: cmdMsgs,
+                        page: {
+                            title: path[2] + " " + pluginTitle,
+                            subheader: path[2] + "'s " + pluginTitle + ":",
+                            breadcrumb: [
+                                ["/", "Home"],
+                                [pluginUrlAbs, pluginTitle],
+                                ["", path[2]]
+                            ]
+                        }
+                    },
+                    function (err, html) {
+                        res.write(html);
+                    }
+            );
         } else {
-            api.jade.renderFile(process.cwd() + '/views/404.jade',null, function(err,html){
+            api.jade.renderFile(process.cwd() + '/views/404.jade', null, function (err, html) {
                 res.write(html);
             });
         }
-    } else if(path[1].toLowerCase() == pluginUrl){
-        
-        var regex = new RegExp("commands_.*");
-        var channels = storage.keys().filter(function (x) { return regex.test(x); }).map(function (x) { return {channel: x.replace("commands_", "")}; });
-        
-        api.jade.renderFile(process.cwd() + '/views/channels.jade',{url: '/' + pluginUrl + '/', channels: channels, page: {title: pluginTitle, breadcrumb: [["/", "Home"], ["/" + pluginUrl, pluginTitle]]}}, function(err,html){
-            res.write(html);
+    } else if (path[1].toLowerCase() === pluginUrl) {
+
+        var channels = storage.keys().filter(function (x) {
+            return commands_regex.test(x);
+        }).map(function (x) {
+            return {channel: x.replace("commands_", "")};
         });
+
+        api.jade.renderFile(
+                process.cwd() + '/views/channels.jade',
+                {
+                    url: pluginUrlAbs,
+                    channels: channels,
+                    page: {
+                        title: pluginTitle,
+                        breadcrumb: [
+                            ["/", "Home"],
+                            [pluginUrlAbs, pluginTitle]
+                        ]
+                    }
+                },
+                function (err, html) {
+                    res.write(html);
+                });
     } else {
-        if(req.collection == null) req.collection = [];
-        req.collection.push([pluginTitle, "/" + pluginUrl + "/", pluginTitle]);
+        if (req.collection == null)
+            req.collection = [];
+        req.collection.push([pluginTitle, pluginUrlAbs, pluginTitle]);
     }
 }
 
 module.exports = {
     meta_inf: {
-        name: "Command Aliases",
+        name: pluginTitle,
         version: "1.0.0",
         description: "Allows to create command aliases",
         author: "Tschrock (CyberPon3)",
-        pluginurl: "/" + pluginUrl,
+        pluginurl: pluginUrlAbs,
         commandhelp: [
             {command: "!addalias", usage: "!addalias <alias> <command...>", description: "Creates an alias for a command. Use '$args' to pass along the alias's arguments.", permission: "cmd.addalias"},
             {command: "!delalias", usage: "!delalias <alias>", description: "Removes an alias.", permission: "cmd.delalias"},

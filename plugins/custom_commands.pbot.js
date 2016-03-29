@@ -8,8 +8,8 @@ function handleMessage(data) {
 
         var messages = storage.getItem("messages_" + data.channel) || {};
 
-        if (cmd === '!addcmd' || cmd === '!setcmd') {
-            if (api.permissions_manager.userHasPermission(data, "cmd.addcmd") || api.permissions_manager.userHasPermission(data, "cmd.setcmd") || api.permissions_manager.isOwner(data)) {
+        if (cmd === '!setcmd') {
+            if (api.permissions_manager.userHasPermission(data, "cmd.setcmd") || api.permissions_manager.isOwner(data)) {
                 if (pars.length > 2) {
                     var msgcmd = pars[1].toLowerCase().replace(/^!/, '');
                     var msg = pars.slice(2).join(' ');
@@ -17,7 +17,7 @@ function handleMessage(data) {
                     storage.setItem("messages_" + data.channel, messages);
                     sendMessage(data, "Set command !" + msgcmd + " to '" + msg.substr(0, 30) + (msg.length > 30 ? "..." : "") + "'", data.whisper);
                 } else {
-                    sendMessage(data, "Usage: !addcmd <command> <message...>", true);
+                    sendMessage(data, "Usage: !setcmd <command> <message...>", true);
                 }
             } else {
                 sendMessage(data, "Sorry, you don't have permission to use this command.", true);
@@ -51,7 +51,7 @@ function handleMessage(data) {
         } else if (typeof messages[cmd.replace(/^!/, '')] !== 'undefined') {
             msgcmd = cmd.replace(/^!/, '');
             if (data.whisper || api.timeout_manager.checkTimeout(data.channel, "cmd." + msgcmd, 20000) || api.permissions_manager.userHasPermission(data, "timeoutbypass.global") || api.permissions_manager.userHasPermission(data, "timeoutbypass.cmd." + msgcmd)) {
-                if (api.permissions_manager.userHasPermission(data, "cmd." + msgcmd, api.permissions_manager.PERMISSION_ADMIN | api.permissions_manager.PERMISSION_MOD | api.permissions_manager.PERMISSION_PTVADMIN | api.permissions_manager.PERMISSION_USER) || api.permissions_manager.isOwner(data)) {
+                if (api.permissions_manager.userHasPermission(data, "cmd." + msgcmd, api.permissions_manager.PERMISSION_ALL) || api.permissions_manager.isOwner(data)) {
                     sendMessage(data, messages[cmd.replace(/^!/, '')], data.whisper);
                 } else {
                     sendMessage(data, "Sorry, you don't have permission to use this command.", true);
@@ -71,36 +71,74 @@ function sendMessage(uData, txt, whisper) {
     }
 }
 
-function servePage(req,res) {
+var pluginTitle = "Custom Commands";
+var pluginUrl = "custom_commands";
+var pluginUrlAbs = "/" + pluginUrl;
+var messages_regex = new RegExp("messages_.*");
+
+function servePage(req, res) {
     var path = req.url.split('/');
-    
-    if(path.length > 2 && path[1].toLowerCase() == "custom_commands" && path[2] != ''){
-        
+
+    if (path.length > 2 && path[1].toLowerCase() == pluginUrl && path[2] != '') {
+
         var cmds = storage.getItem("messages_" + path[2]) || false;
-        if(cmds){
+        if (cmds) {
             cmdMsgs = [];
-            for(var cmd in cmds) {
+            for (var cmd in cmds) {
                 cmdMsgs.push({command: "!" + cmd, message: cmds[cmd]});
             }
-            api.jade.renderFile(process.cwd() + '/views/list.jade',{listHeader: ["Command", "Message"], list: cmdMsgs, page: {title: path[2] + " Custom Commands", subheader: path[2] + "'s Commands:", breadcrumb: [["/", "Home"], ["/custom_commands", "Custom Commands"], ["", path[2]]]}}, function(err,html){
-                res.write(html);
-            });
+            api.jade.renderFile(
+                    process.cwd() + '/views/list.jade',
+                    {
+                        listHeader: ["Command", "Message"],
+                        list: cmdMsgs,
+                        page: {
+                            title: path[2] + " " + pluginTitle,
+                            subheader: path[2] + "'s " + pluginTitle + ":",
+                            breadcrumb: [
+                                ["/", "Home"],
+                                [pluginUrlAbs, pluginTitle],
+                                ["", path[2]]
+                            ]
+                        }
+                    },
+                    function (err, html) {
+                        res.write(html);
+                    }
+            );
         } else {
-            api.jade.renderFile(process.cwd() + '/views/404.jade',null, function(err,html){
+            api.jade.renderFile(process.cwd() + '/views/404.jade', null, function (err, html) {
                 res.write(html);
             });
         }
-    } else if(path[1].toLowerCase() == "custom_commands"){
-        
-        var regex = new RegExp("messages_.*");
-        var channels = storage.keys().filter(function (x) { return regex.test(x); }).map(function (x) { return {channel: x.replace("messages_", "")}; });
-        
-        api.jade.renderFile(process.cwd() + '/views/channels.jade',{url: '/custom_commands/', channels: channels, page: {title: "Custom Commands", breadcrumb: [["/", "Home"], ["/custom_commands", "Custom Commands"]]}}, function(err,html){
-            res.write(html);
+    } else if (path[1].toLowerCase() === pluginUrl) {
+
+        var channels = storage.keys().filter(function (x) {
+            return messages_regex.test(x);
+        }).map(function (x) {
+            return {channel: x.replace("messages_", "")};
         });
+
+        api.jade.renderFile(
+                process.cwd() + '/views/channels.jade',
+                {
+                    url: pluginUrlAbs,
+                    channels: channels,
+                    page: {
+                        title: pluginTitle,
+                        breadcrumb: [
+                            ["/", "Home"],
+                            [pluginUrlAbs, pluginTitle]
+                        ]
+                    }
+                },
+                function (err, html) {
+                    res.write(html);
+                });
     } else {
-        if(req.collection == null) req.collection = [];
-        req.collection.push(["Custom Commands","/custom_commands/","Custom Commands."]);
+        if (req.collection == null)
+            req.collection = [];
+        req.collection.push([pluginTitle, pluginUrlAbs, pluginTitle]);
     }
 }
 
@@ -112,7 +150,7 @@ module.exports = {
         author: "Tschrock (CyberPon3)",
         pluginurl: "/custom_commands",
         commandhelp: [
-            {command: "!addcmd", usage: "!addcmd <command> <message...>", description: "Adds a command that says a message.", permission: "cmd.addcmd"},
+            {command: "!setcmd", usage: "!setcmd <command> <message...>", description: "Adds a command that says a message.", permission: "cmd.addcmd"},
             {command: "!delcmd", usage: "!delcmd <command>", description: "Removes a message command..", permission: "cmd.delcmd"},
             {command: "!lscmd", usage: "!lscmd", description: "Lists message commands.", permission: "cmd.lscmd"}
         ]

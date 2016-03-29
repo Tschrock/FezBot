@@ -13,7 +13,7 @@ function handleMsg(data) {
             var msgs = storage.getItem("boops") || 0;
             msgs++;
             storage.setItem("boops", msgs);
-            if (api.botName[data.channel.toLowerCase()] && msgLower.indexOf("boops " + api.botName[data.channel.toLowerCase()].toLowerCase()) !== -1) {
+            if (api.botName[data.channel.toLowerCase()] && (msgLower.indexOf("boops " + api.botName[data.channel.toLowerCase()].toLowerCase()) !== -1 || msgLower.indexOf("boop " + api.botName[data.channel.toLowerCase()].toLowerCase()) !== -1 )) {
                 api.Messages.send("/me boops " + data.username, data.channel);
             } else if (api.timeout_manager.checkTimeout(data.channel, "trigger.boop", 30000)) {
                 api.Messages.send("boop", data.channel);
@@ -72,6 +72,10 @@ function handleMsg(data) {
         } else {
             sendMessage(data, "Too soon, wait another " + (api.timeout_manager.getTimeRemaining(data.channel, "cmd.butts") / 1000) + " sec. and try again.", true);
         }
+    } else if (data.msg.toLowerCase().startsWith("!die") || data.msg.toLowerCase().startsWith("!kill")) {
+            if (api.timeout_manager.checkTimeout(data.channel, "trigger.die", 40000)) {
+                api.Messages.send("Help, Cyber! They're trying to hurt me!", data.channel);
+            }
     }
 }
 
