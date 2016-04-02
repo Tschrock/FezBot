@@ -76,7 +76,7 @@ function sendMessage(uData, txt, whisper) {
 
 var pluginTitle = "Command Aliases";
 var pluginUrl = "command_aliases";
-var pluginUrlAbs = "/" + pluginUrl;
+var pluginUrlAbs = "/" + pluginUrl + "/";
 var commands_regex = new RegExp("commands_.*");
 
 function servePage(req, res) {

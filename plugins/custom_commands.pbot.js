@@ -73,7 +73,7 @@ function sendMessage(uData, txt, whisper) {
 
 var pluginTitle = "Custom Commands";
 var pluginUrl = "custom_commands";
-var pluginUrlAbs = "/" + pluginUrl;
+var pluginUrlAbs = "/" + pluginUrl + "/";
 var messages_regex = new RegExp("messages_.*");
 
 function servePage(req, res) {

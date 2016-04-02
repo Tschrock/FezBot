@@ -1,4 +1,4 @@
-﻿var api;
+var api;
 var storage;
 
 function handleMsg(data) {
