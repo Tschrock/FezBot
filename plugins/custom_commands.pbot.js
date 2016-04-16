@@ -52,7 +52,7 @@ function handleMessage(data) {
             msgcmd = cmd.replace(/^!/, '');
             if (data.whisper || api.timeout_manager.checkTimeout(data.channel, "cmd." + msgcmd, 20000) || api.permissions_manager.userHasPermission(data, "timeoutbypass.global") || api.permissions_manager.userHasPermission(data, "timeoutbypass.cmd." + msgcmd)) {
                 if (api.permissions_manager.userHasPermission(data, "cmd." + msgcmd, api.permissions_manager.PERMISSION_ALL) || api.permissions_manager.isOwner(data)) {
-                    sendMessage(data, messages[cmd.replace(/^!/, '')], data.whisper);
+                    sendMessage(data, messages[cmd.replace(/^!/, '')].replace('$args', pars.slice(1).join(' ')), data.whisper);
                 } else {
                     sendMessage(data, "Sorry, you don't have permission to use this command.", true);
                 }
