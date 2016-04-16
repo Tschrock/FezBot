@@ -287,7 +287,13 @@ function initPluginLoader() {
 function initServer(url) {
     var server = http.createServer(function (req, res) {
         res.writeHead(200);
-        api.Events.emit("http", req, res);
+        try {
+            api.Events.emit("http", req, res);
+        }
+        catch (e) {
+            console.log(e);
+            api.Messages.send("(╯°□°）╯︵ uoᴉʇdǝɔxƎ", data.channel);
+        }
         
         var path = req.url.split('/');
         if (path.length < 3 && path[1] == '') {
@@ -360,7 +366,13 @@ function initSocket(token,channel) {
         data.msg = entities.decode(data.msg);
         data.channel = channel;
         data.whisper = false;
-        api.Events.emit(data.duplicate ? "userMsgDuplicate" : "userMsg", api.user_manager.updateUserData(data));
+        try {
+            api.Events.emit(data.duplicate ? "userMsgDuplicate" : "userMsg", api.user_manager.updateUserData(data));
+        }
+        catch (e) {
+            console.log(e);
+            api.Messages.send("(╯°□°）╯︵ uoᴉʇdǝɔxƎ", data.channel);
+        }
     }).on("meMsg", function (data) {
         var il = store.getItem("msgIdLog") || [];
         if(il.indexOf(data.id) == -1){
@@ -371,7 +383,13 @@ function initSocket(token,channel) {
             data.channel = channel;
             data.whisper = false;
             data.me = true;
-            api.Events.emit("meMsg", api.user_manager.updateUserData(data));
+            try {
+                api.Events.emit("meMsg", api.user_manager.updateUserData(data));
+            }
+            catch (e) {
+                console.log(e);
+                api.Messages.send("(╯°□°）╯︵ uoᴉʇdǝɔxƎ", data.channel);
+            }
         }
     }).on("globalMsg", function (data) {
         api.Events.emit("globalMsg", data);
@@ -387,7 +405,13 @@ function initSocket(token,channel) {
         data.msg = entities.decode(data.msg);
         data.channel = channel;
         data.whisper = true;
-        api.Events.emit("whisper", api.user_manager.updateUserData(data));
+        try {
+            api.Events.emit("whisper", api.user_manager.updateUserData(data));
+        }
+        catch (e) {
+            console.log(e);
+            api.Messages.send("(╯°□°）╯︵ uoᴉʇdǝɔxƎ", data.channel);
+        }
     }).on("color", function (data) {
         api.Events.emit("color", data);
     }).on("onlineState", function (data) {
