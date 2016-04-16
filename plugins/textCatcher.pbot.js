@@ -15,7 +15,7 @@ function handleMsg(data) {
             storage.setItem("boops", msgs);
             if (api.botName[data.channel.toLowerCase()] && (msgLower.indexOf("boops " + api.botName[data.channel.toLowerCase()].toLowerCase()) !== -1 || msgLower.indexOf("boop " + api.botName[data.channel.toLowerCase()].toLowerCase()) !== -1 )) {
                 api.Messages.send("/me boops " + data.username, data.channel);
-            } else if (api.timeout_manager.checkTimeout(data.channel, "trigger.boop", 30000)) {
+            } else if (msgLower.indexOf("boops ") === -1 && api.timeout_manager.checkTimeout(data.channel, "trigger.boop", 30000)) {
                 api.Messages.send("boop", data.channel);
             }
 
@@ -29,6 +29,10 @@ function handleMsg(data) {
         } else if (msgLower.indexOf("wake me up inside") !== -1) {
             if (api.timeout_manager.checkTimeout(data.channel, "trigger.wakemeup", 60000)) {
                 api.Messages.send("♫ Save me from the nothing I've become. ♫", data.channel);
+            }
+        } else if (msgLower.replace(/\W/g, '').indexOf("cant wake up") !== -1) {
+            if (api.timeout_manager.checkTimeout(data.channel, "trigger.cantwakeup", 60000)) {
+                api.Messages.send("♫ Wake me up inside. ♫", data.channel);
             }
         } else if (msgLower.indexOf("you spin me right round baby right round") !== -1) {
             if (api.timeout_manager.checkTimeout(data.channel, "trigger.spinme", 60000)) {
@@ -51,7 +55,7 @@ function handleMsg(data) {
                 api.Messages.send("♫ and it opened up my eyes I saw the sign ♫", data.channel);
             }
         } else if (msgLower.indexOf("kill " + api.botName[data.channel.toLowerCase()].toLowerCase()) !== -1
-                || msgLower.indexOf("die " + api.botName[data.channel.toLowerCase()].toLowerCase()) !== -1) {
+                || msgLower.replace(/\W/g, '').indexOf("die " + api.botName[data.channel.toLowerCase()].toLowerCase()) !== -1) {
             if (api.timeout_manager.checkTimeout(data.channel, "trigger.die", 40000)) {
                 api.Messages.send("Help, Cyber! They're trying to hurt me!", data.channel);
             }
@@ -72,7 +76,9 @@ function handleMsg(data) {
         } else {
             sendMessage(data, "Too soon, wait another " + (api.timeout_manager.getTimeRemaining(data.channel, "cmd.butts") / 1000) + " sec. and try again.", true);
         }
-    } else if (data.msg.toLowerCase().startsWith("!die") || data.msg.toLowerCase().startsWith("!kill")) {
+    } else if (data.msg.toLowerCase().startsWith("!die")
+            || data.msg.toLowerCase().startsWith("!kill")
+            || data.msg.toLowerCase().startsWith("!crash")) {
             if (api.timeout_manager.checkTimeout(data.channel, "trigger.die", 40000)) {
                 api.Messages.send("Help, Cyber! They're trying to hurt me!", data.channel);
             }
@@ -103,10 +109,12 @@ module.exports = {
     },
     start: function () {
         api.Events.on("userMsg", handleMsg);
+        api.Events.on("whisper", handleMsg);
         api.Events.on("meMsg", handleMsg);
     },
     stop: function () {
         api.Events.removeListener("userMsg", handleMsg);
+        api.Events.removeListener("whisper", handleMsg);
         api.Events.removeListener("meMsg", handleMsg);
     }
 }
