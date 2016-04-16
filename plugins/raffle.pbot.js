@@ -56,11 +56,14 @@ function handleMessage(data) {
                 sendMessage(data, "Usage: !raffle [rafflename] <setTimeLimit | setDrawingLimit> <milliseconds | times>", true);
             }
         }
+        else if (pars.length >= 2) {
+            raffle = pars[1];
+        }
 
         switch (cmd) {
             case "settimelimit":
                 if (api.permissions_manager.userHasPermission(data, "cmd.raffle.settimelimit") || api.permissions_manager.isOwner(data)) {
-                    setTimeLimit(data.channel, raffle, value);
+                    setTimeLimit(data.channel, raffle ? raffle : 'default', value);
                     sendMessage(data, "Set time limit" + (raffle ? " for '" + raffle + "'" : "") + " to " + value + "ms.", data.whisper);
                 } else {
                     sendMessage(data, "Sorry, you don't have permission to use this command.", true);
@@ -68,7 +71,7 @@ function handleMessage(data) {
                 break;
             case "setdrawinglimit":
                 if (api.permissions_manager.userHasPermission(data, "cmd.raffle.setdrawinglimit") || api.permissions_manager.isOwner(data)) {
-                    setDrawingLimit(data.channel, raffle, value);
+                    setDrawingLimit(data.channel, raffle ? raffle : 'default', value);
                     sendMessage(data, "Set drawing limit" + (raffle ? " for '" + raffle + "'" : "") + " to " + value + " times.", data.whisper);
                 } else {
                     sendMessage(data, "Sorry, you don't have permission to use this command.", true);
@@ -82,7 +85,7 @@ function handleMessage(data) {
                     var userArr = [];
                     for (var userId in currentUserList) {
                         var user = currentUserList[userId];
-                        if (api.permissions_manager.userHasPermission(user, "cmd.raffle.include", api.permissions_manager.PERMISSION_USER)) {
+                        if (api.permissions_manager.userHasPermission(user, "cmd.raffle." + (raffle ? raffle : 'default') + ".include", api.permissions_manager.PERMISSION_USER)) {
                             userArr.push(user);
                         }
                     }
@@ -96,8 +99,8 @@ function handleMessage(data) {
                     });
 
                     var allowedUserArr = [];
-                    var timeLimit = Date.now() - getTimeLimit(data.channel, raffle);
-                    var drawingLimit = getDrawingLimit(data.channel, raffle);
+                    var timeLimit = Date.now() - getTimeLimit(data.channel, raffle ? raffle : 'default');
+                    var drawingLimit = getDrawingLimit(data.channel, raffle ? raffle : 'default');
 
                     userArr.forEach(function (x) {
                         var uName = x.username.toLowerCase();
