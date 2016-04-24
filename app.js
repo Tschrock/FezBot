@@ -337,12 +337,12 @@ function initSocket(token,channel) {
         query: "token=" + token
     }).on("connect", function () {
         console.log("Connected to " + channel);
-        api.Events.emit("connected");
+        api.Events.emit("connected", channel);
     }).on("disconnect", function (reason) {
         console.log("Disconnected from " + channel);
-        api.Events.emit("disconnected", reason);
+        api.Events.emit("disconnected", {reason: reason, channel:channel});
     }).on("reconnect", function () {
-        api.Events.emit("reconnected");
+        api.Events.emit("reconnected", channel);
     }).on("reconnect_attempt", function () {
         api.Events.emit("reconnect_attempt");
     }).on("chatMode", function (data) {
