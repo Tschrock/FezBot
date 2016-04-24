@@ -292,7 +292,6 @@ function initServer(url) {
         }
         catch (e) {
             console.log(e);
-            api.Messages.send("(╯°□°）╯︵ uoᴉʇdǝɔxƎ", data.channel);
         }
         
         var path = req.url.split('/');
