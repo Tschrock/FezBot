@@ -292,6 +292,7 @@ function initServer(url) {
         }
         catch (e) {
             console.log(e);
+            console.log(e.stack);
         }
         
         var path = req.url.split('/');
@@ -370,6 +371,7 @@ function initSocket(token,channel) {
         }
         catch (e) {
             console.log(e);
+            console.log(e.stack);
             api.Messages.send("(╯°□°）╯︵ uoᴉʇdǝɔxƎ", data.channel);
         }
     }).on("meMsg", function (data) {
@@ -387,6 +389,7 @@ function initSocket(token,channel) {
             }
             catch (e) {
                 console.log(e);
+                console.log(e.stack);
                 api.Messages.send("(╯°□°）╯︵ uoᴉʇdǝɔxƎ", data.channel);
             }
         }
@@ -409,6 +412,7 @@ function initSocket(token,channel) {
         }
         catch (e) {
             console.log(e);
+            console.log(e.stack);
             api.Messages.send("(╯°□°）╯︵ uoᴉʇdǝɔxƎ", data.channel);
         }
     }).on("color", function (data) {
