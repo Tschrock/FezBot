@@ -1,0 +1,18 @@
+doctype html
+html
+    include ./includes/head.jade
+    body
+        .container
+            include ./includes/header.jade
+            h3 Chat Logs:
+            table
+                tbody
+                    -var monthNames = [ "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" ];
+                    -function prettyDate(date) {
+                        -var a = date.split("/");
+                        -return a[2] + " - " + monthNames[a[1]-1] + ". " + a[0];
+                    -}
+                    each record in records
+                        tr 
+                            td 
+                                a(href="/logger/"+record.channel+"/#{record.date.split('/').join('_')}") #{prettyDate(record.date)}

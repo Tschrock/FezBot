@@ -1,0 +1,144 @@
+doctype html
+html
+    include ./includes/head.jade
+        style.
+            .chatlog td{
+                padding: 5px;
+            }
+            #chatContainer {
+                width: 100%;
+                background-color: #232323;
+                min-width: 200px;
+                margin: auto;
+                padding: 20px 10px;
+                overflow: hidden;
+                word-wrap: break-word;
+            }
+            #msgs {
+                line-height: 1.6em;
+                list-style-type: none;
+                padding-left: 0px;
+                margin: 0;
+                overflow: auto;
+            }
+            .update {
+                padding: 0px 5px;
+                color: rgb(255,255,255);
+                font-size: 13px;
+                text-align: center;
+                display: list-item;
+                background-color: #303030;
+                border-radius: 8px;
+                margin: 5px 10px;
+            }
+            .messageli {
+                font-size: 12px;
+                padding: 1px 0px;
+                margin-left: 45px;
+                margin-right: 5px;
+                color: #fff;
+            }
+            .chat_usr_ava {
+                width: 35px;
+                height: 35px;
+                margin: 0px 0px 0px -40px;
+                display: inline-block;
+                border-radius: 120px;
+                margin-top: -1px;
+                cursor: pointer;
+                -webkit-transition: all 0.4s ease-in-out;
+                -moz-transition: all 0.4s ease-in-out;
+                -o-transition: all 0.4s ease-in-out;
+                transition: all 0.4s ease-in-out;
+            }
+            .infoContent {
+                background-color: #303030;
+                border-radius: 0px;
+                display: inline-block;
+                vertical-align: top;
+                padding: 1px 4px;
+                border-bottom: 1px solid #000;
+                max-width: 100%;
+            }
+            .msgUsername {
+                cursor: pointer;
+                font-family: verdana;
+                color: #fff;
+                vertical-align: initial;
+            }
+            .timestamp {
+                padding-top: 2px;
+                padding-bottom: 2px;
+                font-size: 0.8em;
+                cursor: pointer;
+                float: right;
+                color: #5A5A5A;
+                margin: 0px 5px;
+            }
+            .msgContent {
+                line-height: 20px;
+                width: 100%;
+                font-family: verdana;
+                font-size: 12px;
+                display: inherit;
+            }
+            .theMsg {
+                display: block;
+                padding: 0px;
+            }
+            #chatContainer a:visited {
+                color: #FE8CFF;
+                text-decoration: underline;
+            }
+            #chatContainer a:visited {
+                color: #88b530;
+            }
+            #chatContainer a:link {
+                color: #88b530;
+                text-decoration: none;
+            }
+            .clHead {
+                background-color: #3A3E45;
+                margin: 0px;
+                padding: 10px;
+                color: #eee;
+                font-family: serif;
+            }
+    body
+        .container
+            include ./includes/header.jade
+            -var monthNames = [ "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" ];
+            -function prettyDate(date) {
+                -var a = date.split("/");
+                -return monthNames[a[1]-1] + " " + a[0] + ", " + a[2];
+            -}
+            -function prettyTime(dateString){
+            -var date =  new Date(dateString);
+                -var h = date.getHours();
+                -var min = date.getMinutes();
+                -var s = date.getSeconds();
+                -return h+':'+min+':'+s;
+            -}
+            -function parseLinks(a) {
+                -a = a.split(" ");
+                -for (var b = 0; b < a.length; b++)
+                    -/(ftp|https?):\/\/[\w\d-_\.]+\.[\w\d\:]+(\/[^<>]*)?/i.test(a[b]) ? a[b] = a[b].replace(/(.*)((ftp|https?):\/\/[\w\d-_\.]+\.[\w\d\:]+(\/[^<>]*)?)(.*)/i, function() {
+                        -return arguments[1] + "<a href='" + arguments[2] + "' target='_blank'>" + arguments[2] + "</a>" + arguments[5]
+                    -}) : a[b] = a[b];
+                -return a.join(" ")
+            -}
+            h3.clHead Chat Logs (#{prettyDate(record.date)}):
+            div#chatContainer
+                ul#msgs
+                    each message in record.messages
+                        -if(message.type === 'update')
+                            li
+                                span.update #{message.msg}
+                        -else
+                            li.messageli(id="#{prettyTime(message.timestamp)}") 
+                                img.chat_usr_ava(src="https://picarto.tv/user_data/usrimg/"+message.username.toLowerCase()+"/dsdefault.jpg")
+                                div.infoContent
+                                    span.msgUsername(style="color:"+message.color) #{message.username}
+                                    span.timestamp #{prettyTime(message.timestamp)}
+                                    div.msgContent
+                                        span.theMsg !{parseLinks(message.msg)}
