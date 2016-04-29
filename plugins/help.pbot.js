@@ -3,7 +3,7 @@ var api;
 function handleMessage(data) {
     if (data.msg.toLowerCase().split(' ')[0] === "!help") {
         if (data.whisper || api.timeout_manager.checkTimeout(data.channel, "cmd.help", 20000) || api.permissions_manager.userHasPermission(data, "timeoutbypass.global") || api.permissions_manager.userHasPermission(data, "timeoutbypass.cmd.help")) {
-            if (api.permissions_manager.userHasPermission(data, "cmd.help", api.permissions_manager.PERMISSION_ALL) || api.permissions_manager.isOwner(data)) {
+            if (api.permissions_manager.userHasPermission(data, "cmd.help", api.permissions.PERMISSION_ALL) || api.permissions_manager.isOwner(data)) {
                 if (api["url"]) {
                     sendMessage(data, "Bot Help: " + api.url.url + ":" + api.url.port + "/help", data.whisper);
                 } else {

@@ -50,7 +50,7 @@ function handleMessage(data) {
         } else if (commands[cmd.replace(/^!/, '')]) {
             var msgcmd = cmd.replace(/^!/, '');
             if (data.whisper || api.timeout_manager.checkTimeout(data.channel, "cmd." + msgcmd, 0) || api.permissions_manager.userHasPermission(data, "timeoutbypass.global") || api.permissions_manager.userHasPermission(data, "timeoutbypass.cmd." + msgcmd)) {
-                if (api.permissions_manager.userHasPermission(data, "cmd." + msgcmd, api.permissions_manager.PERMISSION_ALL) || api.permissions_manager.isOwner(data)) {
+                if (api.permissions_manager.userHasPermission(data, "cmd." + msgcmd, api.permissions.PERMISSION_ALL) || api.permissions_manager.isOwner(data)) {
                     var newData = api.user_manager.mergeUserData({}, data);
                     newData.msg = commands[cmd.replace(/^!/, '')].replace('$args', pars.slice(1).join(' '));
                     newData.id += '_';

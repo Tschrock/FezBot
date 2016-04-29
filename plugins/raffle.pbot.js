@@ -85,7 +85,7 @@ function handleMessage(data) {
                     var userArr = [];
                     for (var userId in currentUserList) {
                         var user = currentUserList[userId];
-                        if (api.permissions_manager.userHasPermission(user, "cmd.raffle." + (raffle ? raffle : 'default') + ".include", api.permissions_manager.PERMISSION_USER)) {
+                        if (api.permissions_manager.userHasPermission(user, "cmd.raffle." + (raffle ? raffle : 'default') + ".include", api.permissions.PERMISSION_USER)) {
                             userArr.push(user);
                         }
                     }

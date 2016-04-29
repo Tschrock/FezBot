@@ -2,7 +2,7 @@ var api;
 
 function handleMessage(data) {
     if (data.msg.toLowerCase().split(' ')[0] === "!ship") {
-        if (api.permissions_manager.userHasPermission(data, "cmd.ship", api.permissions_manager.PERMISSION_ADMIN | api.permissions_manager.PERMISSION_MOD | api.permissions_manager.PERMISSION_PTVADMIN | api.permissions_manager.PERMISSION_USER) || api.permissions_manager.isOwner(data)) {
+        if (api.permissions_manager.userHasPermission(data, "cmd.ship", api.permissions.PERMISSION_ALL) || api.permissions_manager.isOwner(data)) {
             if (data.whisper || api.timeout_manager.checkTimeout(data.channel, "cmd.ship", 20000) || api.permissions_manager.userHasPermission(data, "timeoutbypass.global") || api.permissions_manager.userHasPermission(data, "timeoutbypass.cmd.ship")) {
 
 
@@ -11,7 +11,7 @@ function handleMessage(data) {
                 var userArr = [];
                 for (var userId in currentUserList) {
                     var user = currentUserList[userId];
-                    if (api.permissions_manager.userHasPermission(user, "cmd.ship.include", api.permissions_manager.PERMISSION_USER)) {
+                    if (api.permissions_manager.userHasPermission(user, "cmd.ship.include", api.permissions.PERMISSION_ALL)) {
                         userArr.push(user);
                     }
                 }

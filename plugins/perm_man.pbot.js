@@ -16,21 +16,21 @@ function parsePermLevel(str) {
         switch (lvls[i]) {
             case "user":
             case "users":
-                lvl += api.permissions_manager.PERMISSION_USER;
+                lvl += api.permissions.PERMISSION_USER;
                 break;
             case "mod":
             case "mods":
-                lvl += api.permissions_manager.PERMISSION_MOD;
+                lvl += api.permissions.PERMISSION_MOD;
                 break;
             case "admin":
             case "admins":
-                lvl += api.permissions_manager.PERMISSION_ADMIN;
+                lvl += api.permissions.PERMISSION_ADMIN;
                 break;
             case "padmin":
             case "padmins":
             case "ptvadmin":
             case "ptvadmins":
-                lvl += api.permissions_manager.PERMISSION_PTVADMIN;
+                lvl += api.permissions.PERMISSION_PTVADMIN;
                 break;
         }
     }
@@ -101,50 +101,42 @@ function sendMessage(txt, whisperUser, channel) {
 
 function servePage(req, res) {
     var path = req.url.split('/');
-    if (path.length > 2 && path[1].toLowerCase() == "permissions" && path[2] != '') {
+    if (path[1].toLowerCase() === "permissions") {
+        if (path.length > 2 && path[2] !== '') {
 
-        var permissions = api.permissions_manager.__permsCache || {};
-        if (permissions[path[2]]) {
+            var permissions = api.permissions_manager.getChannelPermissions(path[2]).permissions;
             var permissionList = [];
-            
-            for (var perm in permissions[path[2]]) {
-                var p = permissions[path[2]][perm];
-                var permListObj = {};
-                permListObj.permissionId = perm;
-                permListObj.allowedRoles = ((((p.level & api.permissions_manager.PERMISSION_USER) !== 0) ? "Users, " : "") +
-                        (((p.level & api.permissions_manager.PERMISSION_ADMIN) !== 0) ? "Admins, " : "") +
-                        (((p.level & api.permissions_manager.PERMISSION_MOD) !== 0) ? "Mods, " : "") +
-                        (((p.level & api.permissions_manager.PERMISSION_PTVADMIN) !== 0) ? "PTVAdmins, " : "")).replace(/, $/, "");
-                permListObj.whitelist = p.whitelist.join(", ");
-                permListObj.blacklist = p.blacklist.join(", ");
-                permissionList.push(permListObj);
+
+            for (var perm in permissions) {
+                var p = permissions[perm];
+                permissionList.push({
+                    permissionId: p.id,
+                    allowedRoles: (((p.level & api.permissions.PERMISSION_USER) ? "Users, " : "") +
+                            ((p.level & api.permissions.PERMISSION_ADMIN) ? "Admins, " : "") +
+                            ((p.level & api.permissions.PERMISSION_MOD) ? "Mods, " : "") +
+                            ((p.level & api.permissions.PERMISSION_PTVADMIN) ? "PTVAdmins, " : "")).replace(/, $/, ""),
+                    whitelist: p.whitelist.join(", "),
+                    blacklist: p.blacklist.join(", ")
+
+                });
             }
-            
-            permissionList.sort(function (a, b) { return a.permissionId.localeCompare(b.permissionId);})
+
+            permissionList.sort(function (a, b) {
+                return a.permissionId.localeCompare(b.permissionId);
+            });
 
             api.jade.renderFile(process.cwd() + '/views/list.jade', {listHeader: ["PermissionId", "Allowed Roles", "Whitelist", "Blacklist"], list: permissionList, page: {title: path[2] + "'s Channel Permissions", subheader: path[2] + "'s Channel Permissions", breadcrumb: [["/", "Home"], ["/permissions", "Permissions"], ["/" + path[2], path[2]]]}}, function (err, html) {
                 res.write(html);
             });
         } else {
-            api.jade.renderFile(process.cwd() + '/views/404.jade', null, function (err, html) {
+            var channels = api.permissions_manager.getAllPermissions().map(function (p) { return { channel: p.channel }; });
+
+            api.jade.renderFile(process.cwd() + '/views/channels.jade', {url: '/permissions/', channels: channels, page: {title: "Permissions", breadcrumb: [["/", "Home"], ["/permissions", "Permissions"]]}}, function (err, html) {
                 res.write(html);
             });
         }
-    } else if (path[1].toLowerCase() == "permissions") {
-        var permissions = api.permissions_manager.getAllPermissions();
-        var channels = [];
-        for (var perm in permissions) {
-            channels.push(perm);
-        }
-        channels = channels.map(function (x) {
-            return {channel: x};
-        });
-
-        api.jade.renderFile(process.cwd() + '/views/channels.jade', {url: '/permissions/', channels: channels, page: {title: "Permissions", breadcrumb: [["/", "Home"], ["/permissions", "Permissions"]]}}, function (err, html) {
-            res.write(html);
-        });
     } else {
-        if (req.collection == null)
+        if (req.collection === null)
             req.collection = [];
         req.collection.push(["Permissions", "/permissions/", "View permissions for the bot."]);
     }

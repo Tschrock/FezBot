@@ -4,7 +4,7 @@ var Wolfram = new WolframClient('< WolframAlpha API Key >');  // You need to get
 
 function handleMessage(data) {
     if (data.msg.toLowerCase().startsWith("!wa")) {
-        if (api.permissions_manager.userHasPermission(data, "cmd.wa", api.permissions_manager.PERMISSION_ALL) || api.permissions_manager.isOwner(data)) {
+        if (api.permissions_manager.userHasPermission(data, "cmd.wa", api.permissions.PERMISSION_ALL) || api.permissions_manager.isOwner(data)) {
             if (api.timeout_manager.checkTimeout(data.channel, "cmd.wa", 10000) || api.permissions_manager.userHasPermission(data, "timeoutbypass.global") || api.permissions_manager.userHasPermission(data, "timeoutbypass.cmd.wa")) {
                 var cmds = data.msg.toLowerCase().split(' ');
                 if (cmds.length > 1) {

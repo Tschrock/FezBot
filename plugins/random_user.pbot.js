@@ -9,7 +9,7 @@ function handleMessage(data) {
             var userArr = [];
             for (var userId in currentUserList) {
                 var user = currentUserList[userId];
-                if (api.permissions_manager.userHasPermission(user, "cmd.random.include", api.permissions_manager.PERMISSION_USER) && !api.user_manager.isBot(user)) {
+                if (api.permissions_manager.userHasPermission(user, "cmd.random.include", api.permissions.PERMISSION_USER) && !api.user_manager.isBot(user)) {
                     userArr.push(user);
                 }
             }

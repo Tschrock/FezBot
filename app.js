@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env node
+#!/usr/bin/env node
 'use strict';
 
 var io = require("socket.io-client");
@@ -47,109 +47,8 @@ api.mute_manager = {
           }
       }
 };
-api.permissions_manager = {
-    PERMISSION_USER: 1,
-    PERMISSION_ADMIN: 2,
-    PERMISSION_MOD: 4,
-    PERMISSION_PTVADMIN: 8,
-    PERMISSION_ALL: 15,
-    __permsCache: {},
-    __defaultLevel: 6,
-    getPerm: function (channel, pId, defaultPermLevel) {
-        this.__permsCache = store.getItem("permissions") || {};
-        this.__permsCache[channel] = this.__permsCache[channel] || {};
-        if(!this.__permsCache[channel][pId]) {
-            this.__permsCache[channel][pId] = {id: pId, level: (typeof defaultPermLevel !== 'undefined' ? defaultPermLevel : this.PERMISSION_ADMIN | this.PERMISSION_MOD), whitelist: [], blacklist: []};
-            this.savePerms();
-        }
-        return this.__permsCache[channel][pId];
-    },
-    savePerms: function () {
-        store.setItem("permissions", this.__permsCache);
-    },
-    isOwner: function (userData) {
-        return (userData.username.toLowerCase() === userData.channel.toLowerCase()) || this.isGlobalAdmin(userData);
-    },
-    isGlobalAdmin: function (userData){
-        var globalAdmins = store.getItem("admins") || [];
-        return globalAdmins.indexOf(userData.username.toLowerCase()) > -1;
-    },
-    addGlobalAdmin: function(username){
-        var globalAdmins = store.getItem("admins") || [];
-        if(globalAdmins.indexOf(username.toLowerCase()) === -1){
-            globalAdmins.push(username.toLowerCase());
-            store.setItem("admins",globalAdmins);
-        }
-    },
-    removeGlobalAdmin: function(username){
-        var globalAdmins = store.getItem("admins") || [];
-        var index = globalAdmins.indexOf(username.toLowerCase());
-        if(index > -1){
-            globalAdmins.splice(index,1);
-            store.setItem("admins",globalAdmins);
-        }
-    },
-    getGlobalAdmins: function(){
-        return store.getItem("admins") || [];
-    },
-    userHasPermission: function (user, pId, defaultPermLevel) { // !onblacklist && (permLevelCheck || (onwhitelist && registered))
-        var p = this.getPerm(user.channel, pId, defaultPermLevel);
-        return !(p.blacklist.indexOf(user.username) !== -1) && (((p.level & this.getUserPermissionLevel(user)) !== 0) || ((p.whitelist.indexOf(user.username.toLowerCase()) !== -1) && user.registered));
-    },
-    getUserPermissionLevel: function (userData) {
-        return (!(userData.admin || userData.mod || userData.ptvadmin) * this.PERMISSION_USER) +
-                (userData.admin * this.PERMISSION_ADMIN) +
-                (userData.mod * this.PERMISSION_MOD) +
-                (userData.ptvadmin * this.PERMISSION_PTVADMIN);
-    },
-    addPermissionLevel: function (channel, permissionId, level) {
-        var perm = this.getPerm(channel, permissionId);
-        perm.level = perm.level | level;
-        this.savePerms();
-    },
-    removePermissionLevel: function (channel, permissionId, level) {
-        var perm = this.getPerm(channel, permissionId);
-        perm.level = perm.level ^ (perm.level & level);
-        this.savePerms();
-    },
-    whitelistUser: function (channel, permissionId, username) {
-        var perm = this.getPerm(channel, permissionId);
-        if (perm.whitelist.indexOf(username.toLowerCase()) === -1) {
-            perm.whitelist.push(username.toLowerCase());
-        }
-        this.savePerms();
-    },
-    unwhitelistUser: function (channel, permissionId, username) {
-        var perm = this.getPerm(channel, permissionId);
-        var index = perm.whitelist.indexOf(username.toLowerCase());
-        if (index != -1) {
-            perm.whitelist.splice(index, 1);
-        }
-        this.savePerms();
-    },
-    blacklistUser: function (channel, permissionId, username) {
-        var perm = this.getPerm(channel, permissionId);
-        if (perm.blacklist.indexOf(username.toLowerCase()) === -1) {
-            perm.blacklist.push(username.toLowerCase());
-        }
-        this.savePerms();
-    },
-    unblacklistUser: function (channel, permissionId, username) {
-        var perm = this.getPerm(channel, permissionId);
-        var index = perm.blacklist.indexOf(username.toLowerCase());
-        if (index != -1) {
-            perm.blacklist.splice(index, 1);
-        }
-        this.savePerms();
-    },
-    getAllPermissions: function() {
-        return this.__permsCache = store.getItem("permissions") || {};
-    },
-    deletePermission: function (channel, permissionId) {
-        delete this.__permsCache[channel][permissionId];
-        this.savePerms();
-    }
-};
+api.permissions_manager = require('./modules/permissions_manager')(store);
+api.permissions = api.permissions_manager.permissions;
 
 api.user_manager = {
     __currentUserData: {},
@@ -707,7 +606,7 @@ function plugin_cmd(args) {
                         if (plugin_loader.unloadPlugin(file_id, true)) {
                             console.log("[PluginLoader]Successfully unloaded Plugin " + file_id);
                         } else {
-                            console.log("[PluginLoader]Failed to unload Plugin " + file_id + ". Please try 'plugins unload " + file_id + "'.");
+                            console.log("[PluginLoader]Failed to unload Plugin " + file_id + ". Please tryIn 'plugins unload " + file_id + "'.");
                         }
                     } else if (plugin_loader.isPluginRunning(file_id)) {
                         if (

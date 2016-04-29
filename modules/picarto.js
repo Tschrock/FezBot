@@ -1,4 +1,4 @@
-﻿var jsdom = require("jsdom");
+var jsdom = require("jsdom");
 var Promise = require("bluebird");
 
 function getTokenFromHTML(body) {
@@ -12,7 +12,7 @@ function getChannel(stream) {
     if (stream.indexOf("picarto.tv") !== -1) {
         stream = stream.substring(stream.lastIndexOf("/") + 1);
     }
-    return stream
+    return stream;
 }
 
 function getTokenForAccount(stream, username, password) {
