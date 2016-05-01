@@ -118,7 +118,7 @@ module.exports = function (storage) {
     };
     
     module.getUserPermissionLevel = function (user) {
-        return (user.admin || user.mod || user.ptvadmin) | user.admin << 1 | user.mod << 2 | user.ptvadmin << 3;
+        return !(user.admin || user.mod || user.ptvadmin) | user.admin << 1 | user.mod << 2 | user.ptvadmin << 3;
     };
 
     module.isOwner = function (user) {
