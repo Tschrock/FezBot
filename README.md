@@ -1,9 +1,7 @@
-﻿# PicartoTV Chat Bot
+﻿# PicartoChatBot (FezBot)
 ####An extendable bot for your Picarto Chat
 
-[![NPM](https://nodei.co/npm/picarto-chat-bot.png?downloads=true&downloadRank=true&stars=true)](https://nodei.co/npm/picarto-chat-bot/) 
-
-[![Join the chat at https://gitter.im/Wolvan/PicartoChatBot](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/Wolvan/PicartoChatBot?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) [![npm version](https://badge.fury.io/js/picarto-chat-bot.svg)](https://badge.fury.io/js/picarto-chat-bot)
+https://trello.com/b/HgvcQRuY/fezbot
 
 ## Introduction
 This is an extendable bot for Picarto.TV chats. By itself it does nothing, that's where Plugins come in handy. Drop plugin files into the `/plugins` directory, load them from the bot console (or by restarting completely) and enjoy it's functionality.
@@ -25,7 +23,7 @@ This is an extendable bot for Picarto.TV chats. By itself it does nothing, that'
 ## Install the bot
 ### from npm (globally)
 1. Install NodeJS with npm
-2. Use `npm install -g picarto-chat-bot` from a command prompt or terminal
+2. Use `npm install Tschrock/PicartoChatBot` from a command prompt or terminal
 3. Install Plugins
 4. Run it with `picarto-bot [-n|-c|-t|-p|-u|--help]`
 5. Use the `help` command for a list of commands when the bot is running
@@ -47,5 +45,3 @@ Easiest is to check existing plugins on how they are written, but you can also c
 Make sure that your plugin has the file extension `.pbot.js`.
 
 Wanna work on the bot itself? Go ahead and fork the repository, make your changes and open a Pull Request back into here!
-
-Got any other questions? [Join the Gitter Channel of the bot](https://gitter.im/Wolvan/PicartoChatBot), I should be available there most of the time.
