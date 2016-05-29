@@ -1,6 +1,6 @@
 var api;
 var WolframClient = require('node-wolfram');
-var Wolfram = new WolframClient('< WolframAlpha API Key >');  // You need to get your own API key and put it here!
+var Wolfram = new WolframClient('KW339G-2RRVJUVJT9');
 
 function handleMessage(data) {
     if (data.msg.toLowerCase().startsWith("!wa")) {
@@ -12,20 +12,27 @@ function handleMessage(data) {
                         if (err) {
                             console.log(err);
                             sendMessage(data, "There was an error talking to WolframAlpha.", data.whisper);
-                        } else
-                        {
-                            if (result["queryresult"] && result["queryresult"]["pod"]) {
+                        } else {
+                            if (result["queryresult"] && result["queryresult"]["pod"]) 
+                                
+                                var resultPods = result.queryresult.pod;
+                                var primaryResultPods = resultPods.filter(function (pod) { return pod.$.primary; });
+                        
+                                console.log(resultPods);
+                        
                                 var results = [];
-                                for (var a = 0; a < result.queryresult.pod.length; a++)
+                                
+                                for (var a = 0; a < resultPods.length; a++)
                                 {
-                                    var pod = result.queryresult.pod[a];
+                                    var pod = resultPods[a];
+                                    var subPods = pod.subpod;
+                                    
+                                    
                                     console.log(pod.$.title, ": ");
-                                    for (var b = 0; b < pod.subpod.length; b++) {
-
-                                        if (pod.$.primary) {
-                                            results.push(pod.$.title + ": ");
-                                        }
-                                        var subpod = pod.subpod[b];
+                                    for (var b = 0; b < subPods.length; b++) {
+                                        
+                                        var subpod = subPods[b];
+                                        var plaintext;
                                         for (var c = 0; c < subpod.plaintext.length; c++)
                                         {
                                             var text = subpod.plaintext[c];
@@ -41,12 +48,9 @@ function handleMessage(data) {
                                 } else {
                                     sendMessage(data, "No parseable results found.", data.whisper);
                                 }
-                            } else {
-                                sendMessage(data, "There was an error getting results from WolframAlpha.", data.whisper);
                             }
-                        }
-                    });
-                }
+                        });
+                    }
             } else {
                 sendMessage(data, "Too soon, wait another " + (api.timeout_manager.getTimeRemaining(data.channel, "cmd.wa") / 1000) + " sec. and try again.", true);
             }

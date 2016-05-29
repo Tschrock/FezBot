@@ -1,4 +1,3 @@
-'use strict';
 var api;
 
 var list = [
@@ -82,32 +81,20 @@ var list = [
     "IT'S NOT... CREEPY"
 ];
 
-function getQuote(index) {
-    return list[index - 1] + "  (" + (index) + "/" + list.length + ")";
-}
-
-function handleCommand(event) {
-    if (event.data.command === 'mlpquote' && event.claim()) {
-        var command = event.data;
-        if (command.channel.checkTimeout("cmd.mlpquote")) {
-
-            if (event.data.parameters.length > 0) {
-                var par = event.data.parameters[0];
-                if (isInt(par) && parseInt(par) > 0 && parseInt(par) < (list.length + 1)) {
-                    command.reply(getQuote(parseInt(par)));
-                    return;
-                }
-                if (par.toLowerCase() === "list") {
-                    command.reply("List of quotes: " + (api["url"] ? (api.url.url + ":" + api.url.port + "/mlpquotes") : "https://gist.github.com/Tschrock/b382b8672f5468dca45f"));
-                    return;
-                }
+function handleMessage(data) {
+    if (data.msg.toLowerCase().startsWith("!mlpquote")) {
+        if (api.timeout_manager.checkTimeout(data.channel, "cmd.mlpquote")) {
+            var cmds = data.msg.toLowerCase().split(' ');
+            if (cmds.length === 2 && isInt(cmds[1]) && parseInt(cmds[1]) > 0 && parseInt(cmds[1]) < (list.length + 1)) {
+                sendMessage(data, list[parseInt(cmds[1]) - 1] + "  (" + (parseInt(cmds[1])) + "/" + list.length + ")", data.whisper);
+            } else if (cmds.length === 2 && cmds[1] === 'list') {
+                sendMessage(data, "List of quotes: " + (api["url"] ? (api.url.url + ":" + api.url.port + "/mlpquotes") : "https://gist.github.com/Tschrock/b382b8672f5468dca45f"), data.whisper);
+            } else {
+                var rnum = Math.floor(Math.random() * list.length);
+                sendMessage(data, list[rnum] + "  (" + (rnum + 1) + "/" + list.length + ")", data.whisper);
             }
-
-            var rnum = Math.floor(Math.random() * list.length);
-            command.reply(getQuote(rnum));
-
         } else {
-            command.replyPrivate("Too soon, wait another " + command.channel.getTimeout("cmd.mlpquote").timeRemaining() + " sec. and try again.");
+            sendMessage(data, "Too soon, wait another " + (api.timeout_manager.getTimeRemaining(data.channel, "cmd.mlpquote") / 1000) + " sec. and try again.", true);
         }
     }
 }
@@ -118,19 +105,26 @@ function isInt(value) {
     })(parseFloat(value));
 }
 
-function servePage(req, res) {
+function sendMessage(uData, txt, whisper) {
+    if (typeof whisper !== 'undefined' && whisper) {
+        api.Messages.whisper(uData.username, txt, uData.channel);
+    } else {
+        api.Messages.send(txt, uData.channel);
+    }
+}
+
+function servePage(req,res) {
     var path = req.url.split('/');
-    if (path[1].toLowerCase() == "mlpquotes") {
+    if(path[1].toLowerCase() == "mlpquotes"){
         qlist = list.map(function (x, y) {
-            return {id: y + 1, quote: x}
+            return {id: y+1, quote: x}
         });
-        api.jade.renderFile(process.cwd() + '/views/list.jade', {list: qlist, page: {title: "MLP Quotes", subheader: "MLP Quotes:", breadcrumb: [["/", "Home"], ["/mlpquotes", "MLP Quotes"]]}}, function (err, html) {
+        api.jade.renderFile(process.cwd() + '/views/list.jade',{list: qlist, page: {title: "MLP Quotes", subheader: "MLP Quotes:", breadcrumb: [["/", "Home"], ["/mlpquotes", "MLP Quotes"]]}}, function(err,html){
             res.write(html);
         });
     } else {
-        if (req.collection == null)
-            req.collection = [];
-        req.collection.push(["MLP Quotes", "/mlpquotes/", "Quotes from MLP."]);
+        if(req.collection == null) req.collection = [];
+        req.collection.push(["MLP Quotes","/mlpquotes/","Quotes from MLP."]);
     }
 }
 
@@ -151,14 +145,13 @@ module.exports = {
         api = _api;
     },
     start: function () {
-        api.events.on("chatCommand", handleCommand);
-        api.events.on("consoleCommand", handleCommand);
-        api.events.on("http", servePage);
+        api.Events.on("userMsg", handleMessage);
+        api.Events.on("whisper", handleMessage);
+        api.Events.on("http", servePage);
     },
     stop: function () {
-        api.events.removeListener("chatCommand", handleCommand);
-        api.events.removeListener("consoleCommand", handleCommand);
-        api.events.removeListener("http", servePage);
-    },
-    getQuote: getQuote
-};
+        api.Events.removeListener("userMsg", handleMessage);
+        api.Events.removeListener("whisper", handleMessage);
+        api.Events.removeListener("http", servePage);
+    }
+}

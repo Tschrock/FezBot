@@ -1,421 +1,45 @@
 #!/usr/bin/env node
 'use strict';
 
-var io = require("socket.io-client");
-var entities = require("entities");
-var request = require("sync-request");
 var commander = require("commander");
-var EventEmitter = require("events");
 var storage = require("node-persist");
-var picarto = require("./modules/picarto.js");
-var http = require('http');
-var jade = require('jade');
-var config = require("./config.json") || {};
+var EventEmitter = require("events");
 
-var socket;
-var plugin_loader;
-var api = {};
-var socket = {};
-var store = storage.create({ dir: process.cwd() + "/storage/main_app" });
-var inputLog = [];
+var NiceList = require('./modules/nicelist');
+var PicartoAuth = require('./modules/picarto-auth');
+var BotUtil = require('./modules/botutil');
+var Channel = require('./modules/channel');
+var MessageType = require('./modules/messagetype');
+var Message = require('./modules/message');
+var User = require('./modules/user');
+var BotEvent = require('./modules/botevent');
+
+var store = storage.create({dir: process.cwd() + "/storage/main_app"});
 store.initSync();
 
-api.version = "1.2.1";
-api.Events = new EventEmitter;
-api.Events.setMaxListeners(0);
-api.readOnly = {};
-api.botName = {};
-api.jade = jade;
-
-api.sharedStorage = storage.create({ dir: process.cwd() + "/storage/shared_storage" });
-api.sharedStorage.initSync();
-
-api.mute_manager = {
-      __channels: [],
-      isMuted: function(channel){
-          return this.__channels.indexOf(channel.toLowerCase()) > -1;
-      },
-      mute: function(channel){
-          if(this.__channels.indexOf(channel.toLowerCase()) === -1){
-              this.__channels.push(channel.toLowerCase());
-          }
-      },
-      unmute: function(channel){
-          var index = this.__channels.indexOf(channel.toLowerCase());
-          if(index > -1){
-            this.__channels.splice(index,1);
-          }
-      }
-};
-api.permissions_manager = require('./modules/permissions_manager')(store);
-api.permissions = api.permissions_manager.permissions;
-
-api.user_manager = {
-    __currentUserData: {},
-    updateUserData: function (data) {
-        var channel = data.channel.toLowerCase();
-        this.__currentUserData[channel.toLowerCase()] = this.__currentUserData[channel.toLowerCase()] || {};
-        var un = data.username.toLowerCase();
-        return this.__currentUserData[channel.toLowerCase()][un] = (typeof this.__currentUserData[channel.toLowerCase()][un] !== 'undefined') ? this.mergeUserData(this.__currentUserData[channel.toLowerCase()][un], data) : data;
-    },
-    updateUserList: function (channel, data) {
-        var fud = {};
-        for (var i = 0; i < data.length; ++i) {
-            var un = data[i].username.toLowerCase();
-            data[i].channel = channel;
-            this.__currentUserData[channel.toLowerCase()] = this.__currentUserData[channel.toLowerCase()] || {};
-            fud[data[i].username.toLowerCase()] = (typeof this.__currentUserData[channel.toLowerCase()][un] !== 'undefined') ? this.mergeUserData(this.__currentUserData[channel.toLowerCase()][un], data[i]) : data[i];
-        }
-        this.__currentUserData[channel.toLowerCase()] = fud;
-    },
-    mergeUserData: function (sourceData, additionalData) {
-        for (var attrname in additionalData) {
-            sourceData[attrname] = additionalData[attrname];
-        }
-        return sourceData;
-    },
-    getUserByName: function (channel, username) {
-        this.__currentUserData[channel.toLowerCase()] = this.__currentUserData[channel.toLowerCase()] || {};
-        return this.__currentUserData[channel.toLowerCase()][username.toLowerCase()];
-    },
-    isBot: function (userData) {
-        return api.botName[userData.channel.toLowerCase()] && userData.username.toLowerCase() === api.botName[userData.channel.toLowerCase()].toLowerCase();
-    }
+var plugin_loader = false;
+var API = function () {
+    this.version = "2.0.0";
+    this.events = new EventEmitter();
+    this.channels = new ChannelManager(this);
+    this.events.setMaxListeners(0);
+    this.permissions = require('./modules/permissions_manager')(store);
+    this.timeouts = require('./modules/timeout_manager')(store);
+    this.plugins = new PluginLoader(this);
+    this.sharedStorage = storage.create({dir: process.cwd() + "/storage/shared_storage"});
+    this.sharedStorage.initSync();
+    this.jade = require('jade');
 };
 
-api.timeout_manager = {
-    __timeoutMsCache: {},
-    __currentTimeoutsTimes: {},
-    __defaultMs: 15000,
-    getTimeoutMs: function (channel, tId, defaultMs) {
-        tId = tId.toLowerCase();
-        this.__timeoutMsCache = store.getItem("timeouts") || {};
-        this.__timeoutMsCache[channel] = this.__timeoutMsCache[channel] || {};
-        if (!this.__timeoutMsCache[channel][tId]) {
-            this.__timeoutMsCache[channel][tId] = (typeof this.__timeoutMsCache[channel][tId] !== 'undefined') ? this.__timeoutMsCache[channel][tId] : (typeof defaultMs !== 'undefined' ? defaultMs : this.__defaultMs);
-            this.saveTimeoutMs();
-        }
-        return this.__timeoutMsCache[channel][tId];
-    },
-    saveTimeoutMs: function () {
-        store.setItem("timeouts", this.__timeoutMsCache);
-    },
-    getTimeoutTime: function (channel, id) {
-        id = id.toLowerCase();
-        this.__currentTimeoutsTimes[channel.toLowerCase()] = this.__currentTimeoutsTimes[channel.toLowerCase()] || {};
-        return this.__currentTimeoutsTimes[channel.toLowerCase()][id] = this.__currentTimeoutsTimes[channel.toLowerCase()][id] || 0;
-    },
-    checkTimeout: function (channel, id, defaultMs) {
-        id = id.toLowerCase();
-        if (Date.now() - this.getTimeoutTime(channel, id) > this.getTimeoutMs(channel, id, defaultMs)) {
-            this.__currentTimeoutsTimes[channel.toLowerCase()][id] = Date.now();
-            return true;
-        }
-        return false;
-    },
-    getTimeRemaining: function (channel, id, defaultMs) {
-        id = id.toLowerCase();
-        return Math.max(0, (this.getTimeoutMs(channel, id, defaultMs) - (Date.now() - this.getTimeoutTime(channel, id))));
-    },
-    setTimeout: function (channel, id, ms) {
-        id = id.toLowerCase();
-        this.__timeoutMsCache[channel] = this.__timeoutMsCache[channel] || {};
-        this.__timeoutMsCache[channel][id] = ms;
-        this.saveTimeoutMs();
-    },
-    clearTimeout: function(channel, id) {
-        id = id.toLowerCase();
-        this.__currentTimeoutsTimes[channel.toLowerCase()] = this.__currentTimeoutsTimes[channel.toLowerCase()] || {};
-        this.__currentTimeoutsTimes[channel.toLowerCase()][id] = 0;
-    },
-    getAllTimeoutMs: function() {
-        return this.__timeoutMsCache = store.getItem("timeouts") || {};
-    }
-};
+var api = new API();
 
-function initPluginLoader() {
-    var loader_storage = storage.create({ dir: process.cwd() + "/storage/plugin_loader" });
-    loader_storage.initSync();
-    plugin_loader = require("./modules/plugin_loader.js"); plugin_loader = new plugin_loader(api, loader_storage);
-    api.plugin_manager = {
-        load: function (file_id, quiet) {
-            console.log("[Plugin]Plugin requests loading of " + file_id);
-            return plugin_loader.loadPlugin(file_id, quiet);
-        },
-        unload: function (file_id, quiet) {
-            console.log("[Plugin]Plugin requests unloading of " + file_id);
-            return plugin_loader.unloadPlugin(file_id, quiet);
-        },
-        start: function (file_id, quiet) {
-            console.log("[Plugin]Plugin requests starting of " + file_id);
-            return plugin_loader.startedPlugins(file_id, quiet);
-        },
-        stop: function (file_id, quiet) {
-            console.log("[Plugin]Plugin requests stopping of " + file_id);
-            return plugin_loader.stopPlugin(file_id, quiet);
-        },
-        listPlugins: function () {
-            return plugin_loader.listPlugins();
-        },
-        getPlugin: function (fileID) {
-            var plugin = Object.create(plugin_loader.getPlugin(fileID));
-            plugin.start = function () { console.log("Plugins are not allowed to call another plugin's start function!"); }
-            plugin.stop = function () { console.log("Plugins are not allowed to call another plugin's stop function!"); }
-            plugin.load = function () { console.log("Plugins are not allowed to call another plugin's load function!"); }
-            plugin.unload = function () { console.log("Plugins are not allowed to call another plugin's unload function!"); }
-            return plugin;
-        },
-        getPluginInfo: function (fileID) {
-            return plugin_loader.getPluginInfo(fileID);
-        },
-        isPluginLoaded: function (fileID) {
-            return plugin_loader.isPluginLoaded(fileID);
-        },
-        listLoadedPlugins: function () {
-            return plugin_loader.getLoadedPlugins()
-        },
-        isPluginRunning: function (fileID) {
-            return plugin_loader.isPluginRunning(fileID);
-        },
-        getStartedPlugins: function () {
-            return plugin_loader.getStartedPlugins();
-        }
-    }
-}
+api.events.on("connect", function (event) {
+    console.log("Connected to " + event.source.channelName);
+});
+api.events.on("disconnect", function () {
+    console.log("Disconnected from " + event.source.channelName);
+});
 
-function initServer(url) {
-    var server = http.createServer(function (req, res) {
-        res.writeHead(200);
-        try {
-            api.Events.emit("http", req, res);
-        }
-        catch (e) {
-            console.log(e);
-            console.log(e.stack);
-        }
-        
-        var path = req.url.split('/');
-        if (path.length < 3 && path[1] == '') {
-            api.jade.renderFile(process.cwd() + '/views/index.jade', {
-                urls: req.collection.sort(function (a, b) {
-                    if (a[0] < b[0]) return -1;
-                    if (a[0] > b[0]) return 1;
-                    return 0;
-                })
-            }, function (err, html) {
-                res.write(html);
-            });
-        }
-        res.end();
-    });
-    
-    server.listen(url.port, function (error) {
-        function waitToPost() {
-            if (!SET_PICARTO_LOGIN) {
-                if (error) {
-                    console.error("Unable to listen on port", url.port, error);
-                    return;
-                } else {
-                    api.url = url;
-                    console.log("Enter " + url.url + ":" + url.port + " in a browser to access web functions.");
-                }
-            } else {
-                setTimeout(waitToPost, 1000);
-            }
-        }
-        waitToPost();
-    });
-}
-
-function initSocket(token,channel) {
-    if(!channel) return;
-    // Connect all the socket events with the EventEmitter of the API
-    socket[channel.toLowerCase()] = io.connect("https://nd1.picarto.tv:443", {
-        secure: true,
-        forceNew: true,
-        query: "token=" + token
-    }).on("connect", function () {
-        console.log("Connected to " + channel);
-        api.Events.emit("connected", channel);
-    }).on("disconnect", function (reason) {
-        console.log("Disconnected from " + channel);
-        api.Events.emit("disconnected", {reason: reason, channel:channel});
-    }).on("reconnect", function () {
-        api.Events.emit("reconnected", channel);
-    }).on("reconnect_attempt", function () {
-        api.Events.emit("reconnect_attempt");
-    }).on("chatMode", function (data) {
-        api.Events.emit("chatMode", data);
-    }).on("srvMsg", function (data) {
-        api.Events.emit("srvMsg", data);
-    }).on("channelUsers", function (data) {
-        api.user_manager.updateUserList(channel, data);
-        api.Events.emit("channelUsers", data, channel);
-    }).on("userMsg", function (data) {
-        var il = store.getItem("msgIdLog") || [];
-        if(il.indexOf(data.id) == -1){
-            il.push(data.id);
-            if(il.length > 50) inputLog.shift();
-            store.setItem("msgIdLog", il);
-            data.duplicate = false;
-        }
-        else {
-            data.duplicate = true;
-        }
-        data.msg = entities.decode(data.msg);
-        data.channel = channel;
-        data.whisper = false;
-        try {
-            api.Events.emit(data.duplicate ? "userMsgDuplicate" : "userMsg", api.user_manager.updateUserData(data));
-        }
-        catch (e) {
-            console.log(e);
-            console.log(e.stack);
-            api.Messages.send("(╯°□°）╯︵ uoᴉʇdǝɔxƎ", data.channel);
-        }
-    }).on("meMsg", function (data) {
-        var il = store.getItem("msgIdLog") || [];
-        if(il.indexOf(data.id) == -1){
-            il.push(data.id);
-            if(il.length > 50) inputLog.shift();
-            store.setItem("msgIdLog", il);
-            data.msg = entities.decode(data.msg);
-            data.channel = channel;
-            data.whisper = false;
-            data.me = true;
-            try {
-                api.Events.emit("meMsg", api.user_manager.updateUserData(data));
-            }
-            catch (e) {
-                console.log(e);
-                console.log(e.stack);
-                api.Messages.send("(╯°□°）╯︵ uoᴉʇdǝɔxƎ", data.channel);
-            }
-        }
-    }).on("globalMsg", function (data) {
-        api.Events.emit("globalMsg", data);
-    }).on("clearChat", function () {
-        api.Events.emit("clearChat");
-    }).on("commandHelp", function () {
-        api.Events.emit("commandHelp");
-    }).on("modToolsVisible", function (modToolsEnabled) {
-        api.Events.emit("modToolsVisible", modToolsEnabled);
-    }).on("modList", function (data) {
-        api.Events.emit("modList", data);
-    }).on("whisper", function (data) {
-        data.msg = entities.decode(data.msg);
-        data.channel = channel;
-        data.whisper = true;
-        try {
-            api.Events.emit("whisper", api.user_manager.updateUserData(data));
-        }
-        catch (e) {
-            console.log(e);
-            console.log(e.stack);
-            api.Messages.send("(╯°□°）╯︵ uoᴉʇdǝɔxƎ", data.channel);
-        }
-    }).on("color", function (data) {
-        api.Events.emit("color", data);
-    }).on("onlineState", function (data) {
-        api.Events.emit("onlineState", data);
-    }).on("raffleUsers", function (data) {
-        api.Events.emit("raffleUsers", data);
-    }).on("wonRaffle", function (data) {
-        api.Events.emit("wonRaffle", data);
-    }).on("runPoll", function () {
-        api.Events.emit("runPoll");
-    }).on("showPoll", function (data) {
-        api.Events.emit("showPoll", data);
-    }).on("pollVotes", function (data) {
-        api.Events.emit("pollVotes", data)
-    }).on("voteResponse", function () {
-        api.Events.emit("voteResponse");
-    }).on("finishPoll", function (data) {
-        api.Events.emit("finishPoll", data);
-    }).on("gameMode", function (data) {
-        api.Events.emit("gameMode", data);
-    }).on("adultMode", function (data) {
-        api.Events.emit("adultMode", data);
-    }).on("commissionsAvailable", function (data) {
-        api.Events.emit("commissionsAvailable", data);
-    }).on("clearUser", function (data) {
-        api.Events.emit("clearUser", data);
-    }).on("removeMsg", function (data) {
-        api.Events.emit("removeMsg", data);
-    }).on("warnAdult", function () {
-        api.Events.emit("warnAdult");
-    }).on("warnGaming", function () {
-        api.Events.emit("warnGaming");
-    }).on("warnMovies", function () {
-        api.Events.emit("warnMovies");
-    }).on("multiStatus", function (data) {
-        api.Events.emit("multiStatus", data);
-    });
-    
-    api.Messages = {
-        send: function (message,channel) {
-            if(typeof channel == 'undefined'){
-                channel = Object.keys(socket)[0];
-            } else if(typeof socket[channel.toLowerCase()] === 'undefined' || socket[channel.toLowerCase()].disconnected) {
-                console.log("Failed to send, channel is not connected");
-                return;
-            } 
-            if (api.readOnly[channel.toLowerCase()]) {
-                console.log("Bot runs in ReadOnly Mode. Messages can not be sent");
-                return;
-            }
-            if(api.mute_manager.isMuted(channel)){
-                return;
-            }
-            if (message.length > 255) {
-                socket[channel.toLowerCase()].emit("chatMsg", {
-                    msg: "This message was too long for Picarto: " + message.length + " characters. Sorry."
-                });
-                console.log("This message was too long for Picarto: " + message.length + " characters. Sorry.");
-                return;
-            }
-            socket[channel.toLowerCase()].emit("chatMsg", {
-                msg: message.toString()
-            });
-        },
-        whisper: function (to, message,channel) {
-            if(typeof channel == 'undefined'){
-                channel = Object.keys(socket)[0];
-            } else if(typeof socket[channel.toLowerCase()] === 'undefined'  || socket[channel.toLowerCase()].disconnected) {
-                console.log("Failed to send, channel is not connected");
-                return;
-            } 
-            if (api.readOnly[channel.toLowerCase()]) {
-                console.log("Bot runs in ReadOnly Mode. Messages can not be sent");
-                return;
-            }
-            if(api.mute_manager.isMuted(channel)){
-                return;
-            }
-            if ((message.length + 4 + to.length) > 255) {
-                socket[channel.toLowerCase()].emit("chatMsg", {
-                    msg: "/w " + to + " This message was too long for Picarto: " + message.length + " characters. Sorry."
-                });
-                console.log("This message was too long for Picarto: " + message.length + " characters. Sorry.");
-                return;
-            }
-            socket[channel.toLowerCase()].emit("chatMsg", {
-                msg: "/w " + to + " " + message.toString()
-            });
-        }
-    }
-    api.setColor = function (color,channel) {
-        if(typeof channel == 'undefined'){
-                channel = Object.keys(socket)[0];
-        }
-        if (color.startsWith("#")) {
-            color = color.substring(1);
-        }
-        socket[channel.toLowerCase()].emit("setColor", color.toUpperCase());
-    }
-}
-
-initPluginLoader();
 // Load all Plugins in the ./plugins directory
 var quiet_loading = true;
 plugin_loader.listPlugins().forEach(function (item) {
@@ -424,470 +48,376 @@ plugin_loader.listPlugins().forEach(function (item) {
         plugin_loader.loadPlugin(item, quiet_loading);
     }
     if (plugin_state === "running") {
-       plugin_loader.startPlugin(item, quiet_loading);
+        plugin_loader.startPlugin(item, quiet_loading);
     }
 });
 
-var token;
-var name;
-var channel;
-var password;
-config.http = config.http || {};
-if (process.env.PICARTO_TOKEN) token = process.env.PICARTO_TOKEN;
-if (process.env.PICARTO_CHANNEL) channel = process.env.PICARTO_CHANNEL;
-if (process.env.PICARTO_NAME) name = process.env.PICARTO_NAME;
-if (process.env.PICARTO_PORT) config.http.port = process.env.PICARTO_PORT;
-if (process.env.PICARTO_URL) config.http.url = process.env.PICARTO_URL;
-if (process.env.PICARTO_PASSWORD) password = process.env.PICARTO_PASSWORD;
+console.log("Loded plugins:", plugin_loader.getLoadedPlugins().join(", "));
+console.log("Started plugins:", plugin_loader.getStartedPlugins().join(", "));
 
-// Load commandline args as env variables
+// Startup channel connections
+function ChannelConfiguration(name, account, token) {
+    this.name = name;
+    this.account = account || false;
+    this.token = token || false;
+    Object.defineProperty(this, "id", {get: idFromName});
+}
+
+function AccountConfiguration(name, password) {
+    this.name = name;
+    this.password = password || false;
+    Object.defineProperty(this, "id", {get: idFromName});
+}
+
+var channelsToConnect = new NiceList();
+var definedAccounts = new NiceList();
+
+// Load commandline args and env variables
 commander.version(api.version).usage("[options]")
-.option("-c, --channel <Picarto Channel>", "Set channel to connect to.")
-.option("-n, --botname <Bot name>", "Set the bot's name.")
-.option("-t, --token <Token>", "Use an already existing token to login")
-.option("-p, --port <Port>","Set a custom port")
-.option("-u, --url <URL>","Set a custom URL")
-.option("-l, --password <Password>","Use the given password.")
-.parse(process.argv);
-if (commander.token) token = commander.token;
-if (commander.botname) name = commander.botname;
-if (commander.channel) channel = commander.channel;
-if (commander.port) config.http.port = commander.port;
-if (commander.url) config.http.url = commander.url;
-if (commander.password) password = commander.password;
+        .option("-c, --channel <Picarto Channel>", "Set channel to connect to.")
+        .option("-n, --botname <Bot name>", "Set the bot's name.")
+        .option("-t, --token <Token>", "Use an already existing token to login")
+        .option("-p, --port <Port>", "Set a custom port")
+        .option("-u, --url <URL>", "Set a custom URL")
+        .option("-l, --password <Password>", "Use the given password.")
+        .parse(process.argv);
 
-if(config.http){
-    if(config.http.enabled){
-        initServer(config.http);
-    } 
-} else {
-    initServer({url:"http://localhost",port:10001});
+var startupOptions = {
+    token: commander.token || process.env.PICARTO_TOKEN || false,
+    accountname: commander.botname || process.env.PICARTO_NAME || false,
+    channel: commander.channel || process.env.PICARTO_CHANNEL || false,
+    password: commander.password || process.env.PICARTO_PASSWORD || false
+};
+
+if (startupOptions.channel) {
+    channelsToConnect.Add(new ChannelConfiguration(startupOptions.channel, startupOptions.accountname, startupOptions.token));
 }
 
-var SET_PICARTO_LOGIN = 0;
-if (channel && name && token) {
-    console.log("Attempting token based connection, please be patient...");
-    initSocket(token, channel);
-    api.readOnly[channel.toLowerCase()] = false; // Assume that token auth means chat != readonly
-    api.botName[channel.toLowerCase()] = name;
-} else if (channel && name && password) {
-    console.log("Attempting to connect with given auth, this might take a moment. Please be patient...");
-    picarto.getTokenForAccount(channel, name, password).then(function (res) {
-        console.log(res);
-        initSocket(res.token,channel, res.sid);
-        api.readOnly[channel.toLowerCase()] = res.readOnly;
-        api.botName[channel.toLowerCase()] = name;
-        if (res.readOnly) console.log("Chat disabled! Establishing ReadOnly Connection.");
-    }).catch(function (reason) { console.log("Token acquisition failed: " + reason);});
-} else if (channel && name) {
-    console.log("Attempting to connect, this might take a moment. Please be patient...");
-    picarto.getToken(channel, name).then(function (res) {
-        initSocket(res.token,channel);
-        api.readOnly[channel.toLowerCase()] = res.readOnly;
-        api.botName[channel.toLowerCase()] = name;
-        if (res.readOnly) console.log("Chat disabled guest login! Establishing ReadOnly Connection.");
-    }).catch(function (reason) { console.log("Token acquisition failed: " + reason);});
-} else if (channel) {
-    console.log("Attempting ReadOnly connection, please be patient...");
-    picarto.getROToken(channel).then(function (res) { api.readOnly[channel.toLowerCase()] = res.readOnly; initSocket(res.token,channel); }).catch(function (reason) { console.log("Token acquisition failed: " + reason); });
-} else if(config.channels.length === 0 || (config.channels.length === 1 && config.channels[0].channel === "ExampleChannel")) {
-    SET_PICARTO_LOGIN = 1;
-    console.log("No login information given.");
-    process.stdout.write("Channel: ");
+if (startupOptions.accountname && startupOptions.password) {
+    definedAccounts.Add(new AccountConfiguration(startupOptions.accountname, startupOptions.password));
 }
 
-if(config.channels && config.channels.length && !(config.channels.length === 1 && config.channels[0].channel === "ExampleChannel")){
-    config.channels.forEach(function(channel){
-        if(channel.enabled && channel.channel){
-            picarto.getToken(channel.channel, channel.name).then(function (res) {
-                initSocket(res.token,channel.channel);
-                api.readOnly[channel.channel.toLowerCase()] = res.readOnly;
-                api.botName[channel.toLowerCase()] = channel.name;
-                if(channel.muted){
-                    api.mute_manager.mute(channel.channel);
+// Load config
+var config = require("./config.json") || {};
+
+if (config.channels && config.channels.length) {
+    config.channels.forEach(function (channel) {
+        if (channel.enabled !== false) {
+            if (channel.channel) {
+                var conf = channelsToConnect.Get(channel.channel.toLowerCase());
+                if (!conf) {
+                    channelsToConnect.Add(conf = new ChannelConfiguration(channel.channel));
                 }
-                if (res.readOnly) console.log(channel + ": Chat disabled guest login! Establishing ReadOnly Connection.");
-            }).catch(function (reason) { console.log(channel.channel + ": Token acquisition failed: " + reason);});
+                conf.account = channel.channel;
+                conf.token = channel.token;
+            }
+            if (channel.name) {
+                var conf = definedAccounts.Get(channel.name.toLowerCase());
+                if (!conf) {
+                    definedAccounts.Add(conf = new AccountConfiguration(channel.name));
+                }
+                if (channel.password)
+                    conf.password = channel.password;
+            }
         }
     });
 }
 
-function plugin_cmd(args) {
-    var columnify = require("columnify");
-    function printHelp() {
-        var commands = {
-            "list": "List status of all plugins",
-            "load <filename>": "Load a plugin from the /plugins directory",
-            "start <filename>": "Start a previously loaded plugin",
-            "enable <filename>": "Loads and starts a plugin from the /plugins directory",
-            "stop <filename>": "Stop a previously loaded plugin",
-            "unload <filename>": "Unload a previously loaded plugin",
-            "disable <filename>": "Stops and unloads a previously loaded plugin",
-            "reload <filename>": "Fully reload a plugin (Stop->Unload->Load->Start)",
-            "clearstorage <filename>": "Clear the Plugins storage. Plugin restarts in the process"
-        }
-        console.log(
-            "\n" +
-            "Plugin Loader Commands\n\n" +
-            "\tUsage: plugins <subcommand> [arguments]\n\nSubcommands:\n" +
-            columnify(commands, {
-                columnSplitter: " - ",
-                showHeaders: false
-            })
-        );
+console.log("Channels:", channelsToConnect.items);
+console.log("Accounts:", definedAccounts.Select(function (x) {
+    return x.name;
+}).items);
+
+channelsToConnect.ForEach(function (channel) {
+    if (!channel.account && startupOptions.accountname) {
+        channel.account = startupOptions.accountname;
     }
-    var subcmd = args.splice(0, 1)[0];
-    if (subcmd) {
-        switch (subcmd.toLowerCase()) {
-            case "help":
-                printHelp();
-                break;
-            case "load":
-                var file_id = args.splice(0, 1)[0];
-                if (file_id) {
-                    plugin_loader.loadPlugin(file_id);
-                } else {
-                    console.log("No Plugin File specified!\n\n\tUsage: plugins load <File Name>\n");
-                }
-                break;
-            case "unload":
-                var file_id = args.splice(0, 1)[0];
-                if (file_id) {
-                    plugin_loader.unloadPlugin(file_id);
-                } else {
-                    console.log("No Plugin File specified!\n\n\tUsage: plugins unload <File Name>\n");
-                }
-                break;
-            case "start":
-                var file_id = args.splice(0, 1)[0];
-                if (file_id) {
-                    plugin_loader.startPlugin(file_id);
-                } else {
-                    console.log("No Plugin File specified!\n\n\tUsage: plugins start <File Name>\n");
-                }
-                break;
-            case "stop":
-                var file_id = args.splice(0, 1)[0];
-                if (file_id) {
-                    plugin_loader.stopPlugin(file_id);
-                } else {
-                    console.log("No Plugin File specified!\n\n\tUsage: plugins stop <File Name>\n");
-                }
-                break;
-            case "enable":
-                var file_id = args.splice(0, 1)[0];
-                if (file_id) {
-                    if (plugin_loader.isPluginLoaded(file_id) && !plugin_loader.isPluginRunning(file_id)) {
-                        if (plugin_loader.startPlugin(file_id, true)) {
-                            console.log("[PluginLoader]Successfully started Plugin " + file_id);
-                        } else {
-                            console.log("[PluginLoader]Failed to start Plugin " + file_id + ". Please try 'plugins start " + file_id + "'.");
-                        }
-                    } else if (!plugin_loader.isPluginLoaded(file_id)) {
-                        if (
-                            plugin_loader.loadPlugin(file_id, true) &&
-                            plugin_loader.startPlugin(file_id, true)
-                        ) {
-                            console.log("[PluginLoader]Successfully loaded and started Plugin " + file_id);
-                        } else {
-                            console.log("[PluginLoader]Failed to load or start Plugin " + file_id + ". Please try 'plugins load " + file_id + "' and then 'plugins start " + file_id + "'.");
-                        }
-                    } else {
-                        console.log("[PluginLoader]Plugin " + file_id + " is already running.");
-                    }
-                } else {
-                    console.log("No Plugin File specified!\n\n\tUsage: plugins enable <File Name>\n");
-                }
-                break;
-            case "disable":
-                var file_id = args.splice(0, 1)[0];
-                if (file_id) {
-                    if (plugin_loader.isPluginLoaded(file_id) && !plugin_loader.isPluginRunning(file_id)) {
-                        if (plugin_loader.unloadPlugin(file_id, true)) {
-                            console.log("[PluginLoader]Successfully unloaded Plugin " + file_id);
-                        } else {
-                            console.log("[PluginLoader]Failed to unload Plugin " + file_id + ". Please tryIn 'plugins unload " + file_id + "'.");
-                        }
-                    } else if (plugin_loader.isPluginRunning(file_id)) {
-                        if (
-                            plugin_loader.stopPlugin(file_id, true) &&
-                            plugin_loader.unloadPlugin(file_id, true)
-                        ) {
-                            console.log("[PluginLoader]Successfully stopped and unloaded Plugin " + file_id);
-                        } else {
-                            console.log("[PluginLoader]Failed to load or start Plugin " + file_id + ". Please try 'plugins stop " + file_id + "' and then 'plugins unload " + file_id + "'.");
-                        }
-                    } else {
-                        console.log("[PluginLoader]Plugin " + file_id + " is already disabled.");
-                    }
-                } else {
-                    console.log("No Plugin File specified!\n\n\tUsage: plugins enable <File Name>\n");
-                }
-                break;
-            case "reload":
-                var file_id = args.splice(0, 1)[0];
-                if (file_id) {
-                    var isRunning = plugin_loader.isPluginRunning(file_id);
-                    if (
-                        (!isRunning || plugin_loader.stopPlugin(file_id, true)) &&
-                        (!plugin_loader.isPluginLoaded(file_id) || plugin_loader.unloadPlugin(file_id, true)) &&
-                        plugin_loader.loadPlugin(file_id, true) &&
-                        isRunning ? plugin_loader.startPlugin(file_id, true) : true
-                    ) {
-                        console.log("[PluginLoader]Plugin " + file_id + " reloaded successfully");
-                    } else {
-                        console.log("[PluginLoader]Plugin " + file_id + " reload failed! Please reload manually (Stop -> Unload -> Load -> Start).");
-                    }
-                } else {
-                    console.log("No Plugin File specified!\n\n\tUsage: plugins reload <File Name>");
-                }
-                break;
-            case "clearstorage":
-                var file_id = args.splice(0, 1)[0];
-                if (file_id) {
-                    plugin_loader.deleteStorage(file_id);
-                } else {
-                    console.log("No Plugin File specified!\n\n\tUsage: plugins clearstorage <File Name>");
-                }
-                break;
-            case "list":
-                var column_divider = {
-                    plugin_name: "------",
-                    plugin_version: "-------",
-                    plugin_author: "------",
-                    plugin_description: "------------",
-                    plugin_state: "-----",
-                    plugin_file: "----"
-                }
-                var data = [
-                    {
-                        plugin_name: "Plugin",
-                        plugin_version: "Version",
-                        plugin_author: "Author",
-                        plugin_description: "Description",
-                        plugin_state: "State",
-                        plugin_file: "File"
-                    },
-                    column_divider
-                ]
-                var plugin_info; var plugin_state; var plugin;
-                var list = plugin_loader.listPlugins();
-                for (var plugin_index in list) {
-                    plugin = list[plugin_index];
-                    plugin_info = plugin_loader.getPluginInfo(plugin);
-                    if (plugin_loader.isPluginRunning(plugin)) {
-                        plugin_state = "Running";
-                    } else if (plugin_loader.isPluginLoaded(plugin)) {
-                        plugin_state = "Stopped";
-                    } else {
-                        plugin_state = "Unloaded"
-                    }
-                    data.push({
-                        plugin_name: plugin_info.Name,
-                        plugin_version: plugin_info.Version,
-                        plugin_author: plugin_info.Author,
-                        plugin_description: plugin_info.Description,
-                        plugin_state: plugin_state,
-                        plugin_file: plugin.replace(/\.pbot\.js/, ""),
-                    });
-                    data.push(column_divider);
-                }
-                console.log(
-                    "\n" +
-                    columnify(data, {
-                        columnSplitter: " | ",
-                        showHeaders: false,
-                        maxLineWidth: "auto",
-                        config: {
-                            plugin_description: { maxWidth: 20, align: "center" },
-                            plugin_author: { maxWidth: 10, align: "center" },
-                            plugin_name: { maxWidth: 10 }
-                        }
-                    })
-                );
-                break;
-            default:
-                console.log("Unknown subcommand. Type plugins help for a full list of commands");
-                break;
+    if (!channel.account || channel.account === '+') {
+        // promt for account
+        console.log("Need account");
+    }
+    if (!channel.token) {
+        var account = definedAccounts.Get(channel.account.toLowerCase());
+        if (!account) {
+            definedAccounts.Add(account = new AccountConfiguration(channel.account));
+        }
+        if (!account.password && startupOptions.password) {
+            account.password = startupOptions.password;
+        }
+        if (!account.password || account.password === '+') {
+            // promt for account password
+            console.log("Need password");
+        }
+        var finishConnection = function (error, token) {
+            if (!error) {
+                api.channels.newChannel(token, channel.name, channel.account);
+            } else {
+                console.log("Error connecting to '" + channel.name + "': " + error.message);
+            }
+        };
+        if (!account.password || account.password === '-') {
+            channel.token = PicartoAuth.getAnonToken(channel.name, account.name, finishConnection);
+        } else {
+            channel.token = PicartoAuth.getAuthedToken(channel.name, account.name, account.password, finishConnection);
         }
     } else {
-        printHelp();
-    }
-}
-
-process.stdin.on('readable', function () {
-    function printHelp() {
-        var columnify = require("columnify");
-        var commands = {
-            "plugins|pl <subcommand>": "Everything related with plugins can be done here",
-            "clear|cls": "Clears the screen",
-            "exit|quit": "Shuts the bot down",
-            "say <channel> <message>": "Say something as the bot",
-            "whisper <channel> <to> <message>": "Whisper to someone as the bot",
-            "disconnect <channel>": "Disconnect from Picarto",
-            "connect <channel> <name>": "Connect to Picarto again or create a new connection",
-            "reconnect <channel>": "Close and re-establish connection",
-            "help": "Show this help"
-        }
-        console.log(
-            "\n" +
-            "Bot Commands\n\n" +
-            "\tUsage: <command> <subcommand> [arguments]\n\n" +
-            columnify(commands, {
-                columnSplitter: " - ",
-                showHeaders: false
-            }) + "\n\n" +
-            "All Commands that accept subcommands come with a help subcommand\n\n"
-        );
-    }
-    var chunk = process.stdin.read();
-    if (chunk !== null) {
-        if (SET_PICARTO_LOGIN) {
-            if (SET_PICARTO_LOGIN === 1) {
-                if (!chunk.toString().trim()) { process.stdout.write("Channel: "); return; }
-                process.env.PICARTO_CHANNEL = chunk.toString().trim();
-                process.stdout.write("Name (Leave blank for ReadOnly): ");
-                SET_PICARTO_LOGIN = 2;
-            } else if (SET_PICARTO_LOGIN === 2) {
-                if (!chunk.toString().trim()) { 
-                    console.log("Attempting ReadOnly connection, please be patient...");
-                    picarto.getROToken(process.env.PICARTO_CHANNEL).then(function (res) { initSocket(res.token,process.env.PICARTO_CHANNEL); api.readOnly[process.env.PICARTO_CHANNEL.toLowerCase()] = res.readOnly; }).catch(function (reason) { console.log("Token acquisition failed: " + reason); });
-                    SET_PICARTO_LOGIN = 0;
-                    return;
-                }
-                process.env.PICARTO_NAME = chunk.toString().trim();
-                SET_PICARTO_LOGIN = 0;
-                console.log("Attempting to connect, this might take a moment. Please be patient...");
-                picarto.getToken(process.env.PICARTO_CHANNEL, process.env.PICARTO_NAME).then(function (res) {
-                    initSocket(res.token,process.env.PICARTO_CHANNEL);
-                    api.readOnly[process.env.PICARTO_CHANNEL.toLowerCase()] = res.readOnly;
-                    if (res.readOnly) console.log("Chat disabled guest login! Establishing ReadOnly Connection.");
-                }).catch(function (reason) { console.log("Token acquisition failed: " + reason); });
-            }
-            return;
-        }
-        var input = chunk.toString().trim();
-        var args = input.split(" ");
-        var cmd = args.splice(0, 1)[0];
-        switch (cmd.toLowerCase()) {
-            case "plugins":
-            case "pl":
-            case "plugin":
-                plugin_cmd(args);
-                break;
-            case "clear":
-            case "cls":
-                require("cli-clear")();
-                break;
-            case "exit":
-            case "quit":
-                process.exit();
-                break;
-            case "say":
-                channel = args.shift();
-                api.Messages.send(args.join(" "),channel);
-                break;
-            case "admin":
-                var subcmd = args.splice(0, 1)[0];
-                switch(subcmd){
-                    case "add":
-                        if(args[0]){
-                            api.permissions_manager.addGlobalAdmin(args[0]);
-                            console.log("Added " + args[0] + " as a global admin");
-                        }
-                        break;
-                    case "delete":
-                    case "del":
-                        if(args[0]){
-                            api.permissions_manager.removeGlobalAdmin(args[0]);
-                            console.log("Deleted " + args[0] + " from the global admin list");
-                        }
-                        break;
-                    case "list":
-                        api.permissions_manager.getGlobalAdmins().forEach(function(admin){
-                            console.log(admin);
-                        });
-                        break;
-                    default: 
-                        console.log("Usage: admin <add|del|list> <username>");
-                }
-                break;
-            case "mute":
-                if(args[0]){
-                    api.mute_manager.mute(args[0]);
-                    console.log("Channel " + args[0] + " is muted");
-                } else {
-                    console.log("Usage: mute <channel>");
-                }
-                break;
-            case "unmute":
-                if(args[0]){
-                    api.mute_manager.unmute(args[0]);
-                    console.log("Channel " + args[0] + " is not muted");
-                } else {
-                    console.log("Usage: mute <channel>");
-                }
-                break;
-            case "whisper":
-            case "w":
-                var channel = args.shift();
-                var user = args.shift();
-                api.Messages.whisper(user, args.join(" "),channel);
-                break;
-            case "connect":
-                if(args[0] && typeof socket[args[0].toLowerCase()] !== 'undefined'){
-                    socket[args[0].toLowerCase()].connect();
-                } else if(args[0] && args[1]){
-                    picarto.getToken(args[0], args[1]).then(function (res) {
-                        initSocket(res.token,args[0]);
-                        api.readOnly[args[0].toLowerCase()] = res.readOnly;
-                        if (res.readOnly) console.log("Chat disabled guest login! Establishing ReadOnly Connection.");
-                    }).catch(function (reason) { console.log("Token acquisition failed: " + reason);});
-                } else if(args[0]){
-                    process.stdout.write("Name (Leave blank for ReadOnly): ");
-                    process.env.PICARTO_CHANNEL = args[0];
-                    SET_PICARTO_LOGIN = 2;
-                } else {
-                    process.stdout.write("Channel: ");
-                    SET_PICARTO_LOGIN = 1;
-                }
-                break;
-            case "disconnect":
-                if(args[0] && typeof socket[args[0].toLowerCase()] !== 'undefined'){
-                    socket[args[0].toLowerCase()].disconnect();
-                    break;
-                }
-            case "reconnect":
-                if(args[0] && typeof socket[args[0].toLowerCase()] !== 'undefined'){
-                    socket[args[0].toLowerCase()].disconnect();
-                    socket[args[0].toLowerCase()].connect();
-                    break;
-                } else if(!args[0]){
-                    console.log("Please specify channel");
-                } else {
-                    console.log("Socket does not exist, please connect first");
-                }
-                break;
-            case "status":
-            case "stat":
-                console.log("Current Sockets");
-                for(var key in socket){
-                    if (socket.hasOwnProperty(key)) {
-                        console.log("Channel " + key + " is " + (socket[key].connected ? "connected" : "disconnected") + " and " + (api.mute_manager.isMuted(key) ? "muted" : "unmuted"));
-                    }
-                }
-                break;
-            case "help":
-                printHelp();
-                break;
-            default:
-                if (api.Events.listenerCount("command") || api.Events.listenerCount("command#" + cmd.toLowerCase())) {
-                    api.Events.emit("command", cmd.toLowerCase(), args);
-                    api.Events.emit("command#" + cmd.toLowerCase(), args);
-                } else {
-                    console.log("\n\nInvalid Command. Use 'help' to get a list of commands.");
-                }
-                break;
-        }
+        api.channels.newChannel(channel.token, channel.name, channel.account);
     }
 });
+
+
+var ConsoleChannel = BotUtil.extendObj(Channel, function (api, stdin, stdout) {
+    this._api = api;
+    this._token = "";
+    this.channelName = "Console";
+    this.accountname = "Console";
+    this.onlineUsers = new UserManager(this);
+    this.stdinUser = new ConsoleUser(this.onlineUsers);
+    this.onlineUsers.Add(this.stdinUser);
+    this._stdin = stdin;
+    this._stdout = stdout;
+    this.permissions = {
+        getUserPermissionLevel: function () {
+            return -1;
+        }
+    };
+});
+
+ConsoleChannel.prototype.connect = function () {
+    console.error("Error: cannot 'connect()' console channel.");
+    return false;
+};
+ConsoleChannel.prototype.disconnect = function () {
+    console.error("Error: cannot 'disconnect()' console channel.");
+    return false;
+};
+ConsoleChannel.prototype.isConnected = function () {
+    return true;
+};
+ConsoleChannel.prototype.isMuted = function () {
+    return false;
+};
+ConsoleChannel.prototype.sendMessage = function (messageType, content) {
+    this._stdout.write(content + "\n");
+    return true;
+};
+ConsoleChannel.prototype.checkTimeout = function () {
+    return true;
+};
+
+var ConsoleUser = BotUtil.extendObj(User, function () {
+    User.apply(this, arguments);
+    this.username = "Console";
+    this.privilegeLevel = -1;
+});
+
+var CONSOLE_CHANNEL = new ConsoleChannel(api, process.stdin, process.stdout);
+
+var readline = require('readline');
+var imputBuffer = "";
+
+process.stdin.setRawMode(true);
+process.stdin.setEncoding('utf8');
+process.stdin.resume();
+
+var KEYS = {
+    UP: String.fromCharCode(27, 91, 65),
+    DOWN: String.fromCharCode(27, 91, 66),
+    RIGHT: String.fromCharCode(27, 91, 67),
+    LEFT: String.fromCharCode(27, 91, 68),
+    ENTER: String.fromCharCode(13),
+    BACKSPACE: String.fromCharCode(127),
+    DELETE: String.fromCharCode(27, 91, 51, 126),
+    TAB: String.fromCharCode(9),
+    ESC: String.fromCharCode(27),
+    HOME: String.fromCharCode(27, 91, 72),
+    END: String.fromCharCode(27, 91, 70),
+    CTRL_C: String.fromCharCode(3)
+};
+
+function strToCodeArr(str) {
+    var arr = [];
+    for (var i = 0; i < str.length; ++i) {
+        arr.push(str.charCodeAt(i));
+    }
+    return arr;
+}
+
+function showConsoleHelp() {
+
+}
+
+var outputbuffer = "";
+
+var commandHistory = [];
+var historyPosition = 0;
+var historyOriginalLine = "";
+var prompt = "ChatBot> ";
+var inputbuffer = "";
+var cursorpos = 0;
+
+var moveStdIO = true;
+var real_stdout_write = process.stdout.write;
+process.stdout.write = function () {
+    if (moveStdIO) {
+        moveStdIO = false;
+        //console.error({ ob: outputbuffer});
+        readline.clearLine(process.stdout, 0);
+        readline.cursorTo(process.stdout, 0, null);
+        //if (outputbuffer.length > 0) {
+        //    readline.moveCursor(process.stdout, 0, -1);
+        //}
+        //outputbuffer += arguments[0];
+        //arguments[0] = outputbuffer;
+        //outputbuffer = outputbuffer.split("\n").slice(-1)[0] || "";
+        //if (outputbuffer.length > 0) {
+        //    arguments[0] += "\n";
+        //}
+        //console.error({ ob: outputbuffer , args: arguments});
+        real_stdout_write.apply(process.stdout, arguments);
+
+        showPrompt();
+
+        moveStdIO = true;
+    } else {
+        //console.error({ args: arguments});
+        real_stdout_write.apply(process.stdout, arguments);
+    }
+};
+
+function showPrompt() {
+    readline.clearLine(process.stdout, 0);
+    readline.cursorTo(process.stdout, 0, null);
+    process.stdout.write(prompt + inputbuffer);
+    readline.cursorTo(process.stdout, prompt.length + cursorpos, null);
+}
+
+process.stdin.on('data', function (key) {
+    moveStdIO = false;
+    switch (key) {
+        case KEYS.UP:
+            //console.log("UP");
+            if (historyPosition === 0) {
+                historyOriginalLine = inputbuffer;
+            }
+            if (historyPosition++ < commandHistory.length) {
+                inputbuffer = commandHistory[commandHistory.length - historyPosition];
+                cursorpos = inputbuffer.length;
+                readline.clearLine(process.stdout, 0);
+                readline.cursorTo(process.stdout, 0, null);
+                process.stdout.write(prompt + inputbuffer);
+            } else {
+                historyPosition = commandHistory.length;
+            }
+            break;
+        case KEYS.DOWN:
+            //console.log("DOWN");
+            if (historyPosition-- >= 0) {
+                if (historyPosition <= 0) {
+                    historyPosition = 0;
+                    inputbuffer = historyOriginalLine;
+                } else {
+                    inputbuffer = commandHistory[commandHistory.length - historyPosition];
+                }
+                cursorpos = inputbuffer.length;
+                readline.clearLine(process.stdout, 0);
+                readline.cursorTo(process.stdout, 0, null);
+                process.stdout.write(prompt + inputbuffer);
+            } else {
+                historyPosition = 0;
+            }
+            break;
+        case KEYS.RIGHT:
+            //console.log("RIGHT");
+            if (cursorpos++ < inputbuffer.length) {
+                process.stdout.write(key);
+            } else {
+                cursorpos = inputbuffer.length;
+            }
+            break;
+        case KEYS.LEFT:
+            //console.log("LEFT");
+            if (cursorpos-- > 0) {
+                process.stdout.write(key);
+            } else {
+                cursorpos = 0;
+            }
+            break;
+        case KEYS.ENTER:
+            //console.log("ENTER");
+            process.stdout.write('\n');
+            if (outputbuffer.length > 0) {
+                process.stdout.write('\n');
+            }
+            if (inputbuffer !== "") {
+                commandHistory.push(inputbuffer);
+                historyPosition = 0;
+                moveStdIO = true;
+                var ccEvt = new BotEvent("consoleCommand", CONSOLE_CHANNEL, new CommandMessage(CONSOLE_CHANNEL, new Date(), CONSOLE_CHANNEL.stdinUser, inputbuffer, Math.random(), MESSAGE_TYPES.GENERIC));
+                ccEvt.cmdHelp = new NiceList();
+                api.events.emit("consoleCommand", ccEvt);
+                if (!ccEvt.claimed) {
+                    showConsoleHelp(ccEvt.cmdHelp);
+                }
+                moveStdIO = false;
+            }
+            inputbuffer = "";
+            cursorpos = 0;
+            showPrompt();
+            break;
+        case KEYS.BACKSPACE:
+            //console.log("BACKSPACE");
+            cursorpos--;
+            if (cursorpos >= 0) {
+                var afterTxt = inputbuffer.slice(cursorpos + 1, inputbuffer.length);
+                inputbuffer = inputbuffer.slice(0, cursorpos) + afterTxt;
+                showPrompt();
+            } else {
+                cursorpos = 0;
+            }
+            break;
+        case KEYS.DELETE:
+            //console.log("DELETE");
+            if (cursorpos >= 0) {
+                var afterTxt = inputbuffer.slice(cursorpos + 1, inputbuffer.length);
+                inputbuffer = inputbuffer.slice(0, cursorpos) + afterTxt;
+                showPrompt();
+            } else {
+                cursorpos = 0;
+            }
+            break;
+        case KEYS.TAB:
+            //console.log("TAB");
+            break;
+        case KEYS.ESC:
+            //console.log("ESC");
+            break;
+        case KEYS.HOME:
+            //console.log("ESC");
+            cursorpos = 0;
+            readline.cursorTo(process.stdout, prompt.length + cursorpos, null);
+            break;
+        case KEYS.END:
+            //console.log("ESC");
+            cursorpos = inputbuffer.length;
+            readline.cursorTo(process.stdout, prompt.length + cursorpos, null);
+            break;
+        case KEYS.CTRL_C:
+            process.stdout.write('\n');
+            process.exit();
+            break;
+        default:
+            if (/^[\u0020-\u007e\u00a0-\u00ff]*$/.test(key)) {
+                inputbuffer = inputbuffer.slice(0, cursorpos) + key + inputbuffer.slice(cursorpos);
+                cursorpos += key.length;
+                showPrompt();
+            } else {
+                console.log(strToCodeArr(key));
+            }
+    }
+    moveStdIO = true;
+});
+
+moveStdIO = false;
+showPrompt();
+moveStdIO = true;

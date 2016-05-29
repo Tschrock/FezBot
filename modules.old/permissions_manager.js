@@ -9,7 +9,7 @@ module.exports = function (storage) {
         PERMISSION_MOD: 4,
         PERMISSION_PTVADMIN: 8,
         PERMISSION_NONE: 0,
-        PERMISSION_ALL: 15
+        PERMISSION_ALL: -1
     };
 
     var globalDefaultPermissionLevel = pl.PERMISSION_ADMIN | pl.PERMISSION_MOD;
@@ -60,19 +60,19 @@ module.exports = function (storage) {
     };
     
     module.getPermission = function (channel, permissionId, defaultPermissionLevel) {
-        return this.getChannelPermissions(channel).permissions[permissionId] || this.savePermission(channel, createPermission(permissionId, defaultPermissionLevel));
+        return this.getChannelPermissions(channel).permissions[permissionId.toLowerCase()] || this.savePermission(channel, createPermission(permissionId, defaultPermissionLevel));
     };
     
     module.savePermission = function (channel, permissionObj) {
         var channelPerms = this.getChannelPermissions(channel);
-        channelPerms.permissions[permissionObj.id] = permissionObj;
+        channelPerms.permissions[permissionObj.id.toLowerCase()] = permissionObj;
         storage.setItem(PERMISSIONS_STORAGEKEY + channel.toLowerCase(), channelPerms);
         return permissionObj;
     };
     
     module.deletePermission = function (channel, permissionId) {
         var channelPerms = this.getChannelPermissions(channel);
-        delete channelPerms.permissions[permissionId];
+        delete channelPerms.permissions[permissionId.toLowerCase()];
         storage.setItem(PERMISSIONS_STORAGEKEY + channel.toLowerCase(), channelPerms);
     };
 
@@ -114,7 +114,7 @@ module.exports = function (storage) {
 
     module.userHasPermission = function (user, permissionId, defaultPermissionLevel) { // !onblacklist && (permLevelCheck || (onwhitelist && registered))
         var p = this.getPermission(user.channel, permissionId, defaultPermissionLevel);
-        return !(p.blacklist.indexOf(user.username) !== -1) && (((p.level & this.getUserPermissionLevel(user)) !== 0) || ((p.whitelist.indexOf(user.username.toLowerCase()) !== -1) && user.registered));
+        return !(p.blacklist.indexOf(user.username.toLowerCase()) !== -1) && (((p.level & this.getUserPermissionLevel(user)) !== 0) || ((p.whitelist.indexOf(user.username.toLowerCase()) !== -1) && user.registered));
     };
     
     module.getUserPermissionLevel = function (user) {

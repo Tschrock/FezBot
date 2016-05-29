@@ -2,7 +2,7 @@
   "http": {
     "enabled": true,
     "port": 10001,
-    "url": "http://localhost"
+    "url": "http://testing.cyberpon3.net"
   },
   "channels": [
     {
@@ -10,6 +10,12 @@
       "enabled": false,
       "name": "PicartoBot",
       "muted": false
+    }
+  ],
+  "accounts": [
+    {
+      "name": "PicartoBot",
+      "password": false
     }
   ]
 }
