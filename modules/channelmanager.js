@@ -1,8 +1,10 @@
 'use strict';
 
 var NiceList = require('./nicelist');
+var Channel = require('./channel');
 
 var ChannelManager = function (api) {
+    NiceList.apply(this, arguments);
     this._api = api;
 };
 ChannelManager.prototype = Object.create(NiceList.prototype);

@@ -1,6 +1,8 @@
 'use strict';
 var api;
 
+var MessageTypes = require('../modules/messagetypes');
+
 var list = [
     //FS
     "No... I mean, yes... or, actually, kind of.",
@@ -82,34 +84,38 @@ var list = [
     "IT'S NOT... CREEPY"
 ];
 
+
+function handleCommand(event) {
+    var command = event.data;
+    if (command.command === 'mlpquote' && event.claim()) {
+
+        if (!command.sender.hasPermission("cmd.mlpquote")) {
+            command.replyPrivate("Sorry, you don't have permission to use this command.");
+
+        } else if (command.messageType === MessageTypes.PRIVATE || !command.channel.checkTimeout("cmd.mlpquote")) {
+            command.replyPrivate(command.channel.getTimeoutMessage("cmd.mlpquote"));
+
+        } else {
+            if (command.parameters.length > 0) {
+                if (command.parameters[0].toLowerCase() === "list") {
+                    command.reply("List of quotes: " + (api["url"] ? (api.url.url + ":" + api.url.port + "/mlpquotes") : "https://gist.github.com/Tschrock/b382b8672f5468dca45f"));
+                    return;
+                } else if (checkInt(command.parameters[0])) {
+                    command.reply(getQuote(parseInt(command.parameters[0])));
+                    return;
+                }
+            }
+            command.reply(getQuote(Math.floor(Math.random() * list.length)));
+        }
+    }
+}
+
 function getQuote(index) {
     return list[index - 1] + "  (" + (index) + "/" + list.length + ")";
 }
 
-function handleCommand(event) {
-    if (event.data.command === 'mlpquote' && event.claim()) {
-        var command = event.data;
-        if (command.channel.checkTimeout("cmd.mlpquote")) {
-
-            if (event.data.parameters.length > 0) {
-                var par = event.data.parameters[0];
-                if (isInt(par) && parseInt(par) > 0 && parseInt(par) < (list.length + 1)) {
-                    command.reply(getQuote(parseInt(par)));
-                    return;
-                }
-                if (par.toLowerCase() === "list") {
-                    command.reply("List of quotes: " + (api["url"] ? (api.url.url + ":" + api.url.port + "/mlpquotes") : "https://gist.github.com/Tschrock/b382b8672f5468dca45f"));
-                    return;
-                }
-            }
-
-            var rnum = Math.floor(Math.random() * list.length);
-            command.reply(getQuote(rnum));
-
-        } else {
-            command.replyPrivate("Too soon, wait another " + command.channel.getTimeout("cmd.mlpquote").timeRemaining() + " sec. and try again.");
-        }
-    }
+function checkInt(value) {
+    return isInt(value) && parseInt(value) > 0 && parseInt(value) < (list.length + 1);
 }
 
 function isInt(value) {
@@ -134,6 +140,11 @@ function servePage(req, res) {
     }
 }
 
+function handleCommandComplete(event) {
+    event.data.checkCompletion("mlpquote");
+    event.data.checkCompletion("mlpquote list");
+}
+
 module.exports = {
     meta_inf: {
         name: "MLP Quotes",
@@ -153,11 +164,13 @@ module.exports = {
     start: function () {
         api.events.on("chatCommand", handleCommand);
         api.events.on("consoleCommand", handleCommand);
+        api.events.on("commandCompletion", handleCommandComplete);
         api.events.on("http", servePage);
     },
     stop: function () {
         api.events.removeListener("chatCommand", handleCommand);
         api.events.removeListener("consoleCommand", handleCommand);
+        api.events.removeListener("commandCompletion", handleCommandComplete);
         api.events.removeListener("http", servePage);
     },
     getQuote: getQuote

@@ -1,6 +1,6 @@
 'use strict';
 
-var MessageType = require('messagetypes');
+var MessageType = require('./messagetypes');
 
 /**
  * A chat message
@@ -37,9 +37,14 @@ Message.prototype.reply = function (message) {
  * @returns {Boolean} Whether or not the message was successfully queued for sending
  */
 Message.prototype.replyPrivate = function (message) {
-    return this.channel.sendMessage(MESSAGE_TYPES.PRIVATE, message, this.sender);
+    return this.channel.sendMessage(MessageType.PRIVATE, message, this.sender);
     // or
     return this.sender.sendPrivateMessage(message);
+};
+
+Message.prototype.isDuplicate = function () {
+    // TODO: implement Message.isDuplicate()
+    return false;
 };
 
 module.exports = Message;

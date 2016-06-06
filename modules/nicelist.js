@@ -45,12 +45,35 @@ NiceList.prototype.Any = function (callback) {
     }
     return false;
 };
+NiceList.prototype.All = function (callback) {
+    for (var id in this.items) {
+        if (!callback || !callback.call(null, this.items[id], id.slice(1)))
+            return false;
+    }
+    return true;
+};
 NiceList.prototype.Count = function () {
     return Object.keys(this.items).length;
 };
 NiceList.prototype.First = function () {
     for (var id in this.items) {
         return this.items[id];
+    }
+};
+NiceList.prototype.AsArray = function () {
+    var rtn = [];
+    for (var id in this.items) {
+        rtn.push(this.items[id]);
+    }
+    return rtn;
+};
+NiceList.prototype.Random = function () {
+    var rand = Math.floor(Math.random() * this.Count());
+    var i = -1;
+    for (var id in this.items) {
+        if (++i === rand) {
+            return this.items[id];
+        }
     }
 };
 module.exports = NiceList;

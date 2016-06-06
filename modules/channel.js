@@ -31,6 +31,17 @@ var BotEvent = require('./botevent');
 var MessageType = require('./messagetypes');
 var Message = require('./message');
 var CommandMessage = require('./commandmessage');
+var PermissionsManager = require('./permissionsmanager');
+var TimeoutsManager = require('./timeoutsmanager');
+var UserManager = require('./usermanager');
+
+/**
+ * Returns an id for a username
+ * @returns {String}
+ */
+var idFromChannelName = function () {
+    return this.channelName.toLowerCase();
+};
 
 /**
  * @constant
@@ -60,19 +71,20 @@ var Channel = function (api, token, channelName, accountName) {
     this._api = api;
     this._token = token;
     this.channelName = channelName;
+    Object.defineProperty(this, 'id', idFromChannelName);
     this.accountname = accountName;
     this.onlineUsers = new UserManager(this);
-    this.permissions = {
-        getUserPermissionLevel: self._api.permissions.getUserPermissionLevel
-    };
+    this.permissions = new PermissionsManager(api.mainAppStorage, this);
+    this.timeouts = new TimeoutsManager(api.mainAppStorage, this);
+    var inChatHistory = true;
 
     function wrapEvent(event, callback) {
         return function (data) {
             var eData = new BotEvent(event, self, data);
             try {
-                callback.call(this, eData);
+                callback.call(self, eData);
             } catch (e) {
-                var eeData = new BotEvent("exception", self, eData);
+                var eeData = new BotEvent("exception", self, {event: eData, exception: e});
                 try {
                     api.events.emit("exception", eeData);
                 } catch (e) {
@@ -102,23 +114,30 @@ var Channel = function (api, token, channelName, accountName) {
         self.socket.on(e, passthroughEvent(e));
     });
 
+    this.socket.on("endHistory", function () {
+        inChatHistory = false;
+    });
+
     this.socket.on("channelUsers", function (data) {
         self.onlineUsers.updateList(data);
     });
-    this.socket.on("userMsg", wrapEvent(function (event) {
+    this.socket.on("userMsg", wrapEvent("userMsg", function (event) {
         event.data = new Message(self, new Date(), self.onlineUsers.updateUser(event.data), Entities.decode(event.data.msg), event.data.id, MessageType.GENERIC, BotUtil.copyObjectWithout(event.data, ["id", "username", "msg"]));
-        if (event.data.content.startsWith('!')) {
+        if (event.data.content.indexOf('!') === 0) {
             event.data = new CommandMessage(event.data);
-            api.events.emit(event.type = "chatCommand", event);
+            api.events.emit(event.type = (inChatHistory || event.data.isDuplicate()) ? "chatCommandDuplicate" : "chatCommand", event);
+            if(event.type === "chatCommand" && !event.claimed) {
+                event.data.reply("Command not found :(");
+            }
         } else {
-            api.events.emit(event.type = event.data.isDuplicate() ? "userMsgDuplicate" : "userMsg", event);
+            api.events.emit(event.type = (inChatHistory || event.data.isDuplicate()) ? "userMsgDuplicate" : "userMsg", event);
         }
     }));
-    this.socket.on("meMsg", wrapEvent(function (event) {
+    this.socket.on("meMsg", wrapEvent("meMsg", function (event) {
         event.data = new Message(self, new Date(), self.onlineUsers.updateUser(event.data), Entities.decode(event.data.msg), event.data.id, MessageType.SELF, BotUtil.copyObjectWithout(event.data, ["id", "username", "msg"]));
-        api.events.emit(event.type = event.data.isDuplicate() ? "meMsgDuplicate" : "meMsg", event);
+        api.events.emit(event.type = (inChatHistory || event.data.isDuplicate()) ? "meMsgDuplicate" : "meMsg", event);
     }));
-    this.socket.on("whisper", wrapEvent(function (event) {
+    this.socket.on("whisper", wrapEvent("whisper", function (event) {
         event.data = new Message(self, new Date(), self.onlineUsers.updateUser(event.data), Entities.decode(event.data.msg), 'p' + Math.floor(Math.random() * 1000000000), MessageType.PRIVATE, BotUtil.copyObjectWithout(event.data, ["username", "msg"]));
         if (event.data.content.startsWith('!')) {
             event.data = new CommandMessage(event.data);
@@ -209,6 +228,11 @@ Channel.prototype._emit = function (type, data) {
  * @returns {Boolean}
  */
 Channel.prototype.sendMessage = function (messageType, content, _recipient) {
+    if(typeof content === 'undefined') {
+        content = messageType;
+        messageType = MessageType.GENERIC;
+    }
+    
     var preContent = "";
     switch (messageType) {
         case MessageType.GENERIC:
@@ -267,8 +291,25 @@ Channel.prototype.sendSocketCommand = function (command, data) {
     this._emit(command, data);
     return true;
 };
+Channel.prototype.getTimeout = function (id, defaultMs) {
+    return this.timeouts.Get(id, defaultMs);
+};
+Channel.prototype.getPermission = function (id, defaultLevel) {
+    return this.permissions.Get(id, defaultLevel);
+};
+
 Channel.prototype.checkTimeout = function (id, defaultMs) {
-    return this._api.timeouts.checkTimeout(this.channelName, id, defaultMs);
+    return this.getTimeout(id, defaultMs).check();
+};
+Channel.prototype.checkPermission = function (user, id, defaultLevel) {
+    return this.getPermission(id, defaultLevel).check(user);
+};
+
+Channel.prototype.getTimeoutMessage = function (id) {
+    return "Too soon, wait another " + this.getTimeout(id).timeRemaining() + " sec. and try again.";
+};
+Channel.prototype.getPermissionMessage = function () {
+    return "Sorry, you don't have permission to use this command.";
 };
 
 module.exports = Channel;

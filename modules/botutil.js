@@ -42,13 +42,11 @@ module.exports = {
      * @returns {Socket}
      */
     interceptSocketEvents: function (socket, callback) {
-        if (!socket._$onevent) {
-            socket._$onevent = socket.onevent;
-        }
-        socket.onevent = function (x) {
+        var oldonevent = socket.onevent;
+        socket.onevent = function () {
+            oldonevent.apply(this, arguments);
             if (callback)
                 callback.apply(this, arguments);
-            this._$onevent.apply(this, arguments);
         };
         return socket;
     },
@@ -132,5 +130,8 @@ module.exports = {
      */
     clearStdOut: function () {
         process.stdout.write(windows ? this.repeatStr("\r\n", process.stdout.getWindowSize()[1]) : "\x1B[2J") + "\x1B[0f";
+    },
+    getRandomInt: function (min, max) {
+        return Math.floor(Math.random() * (max - min + 1)) + min;
     }
 };

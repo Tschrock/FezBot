@@ -2,6 +2,16 @@
 
 var BotUtil = require('./botutil');
 var NiceList = require('./nicelist');
+var User = require('./user');
+
+/**
+ * Returns an id for a username
+ * @param {String} name
+ * @returns {String}
+ */
+var idFromUsername = function (name) {
+    return name.toLowerCase();
+};
 
 /**
  * A user manager
@@ -10,6 +20,7 @@ var NiceList = require('./nicelist');
  * @returns {UserManager}
  */
 var UserManager = function (channel) {
+    NiceList.apply(this, arguments);
     this.channel = channel;
 };
 UserManager.prototype = Object.create(NiceList.prototype);

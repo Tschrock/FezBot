@@ -1,4 +1,8 @@
+'use strict';
+
 var request = require("request");
+var io = require("socket.io-client");
+
 var accountCache = {};
 module.exports = {
     getTokenFromHTML: function (body) {

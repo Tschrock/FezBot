@@ -1,6 +1,6 @@
 'use strict';
 
-var MessageType = require('messagetype');
+var MessageType = require('./messagetypes');
 
 /**
  * Returns an id for a username
@@ -27,12 +27,12 @@ var User = function (usermanager, username) {
 };
 /**
  * Checks a permission
- * @param {String} permissionId
- * @param {Integer} defaultPermissionLevel
+ * @param {String} id
+ * @param {Integer} defaultLevel
  * @returns {Boolean} Whether or not the User has permission
  */
-User.prototype.hasPermission = function (permissionId, defaultPermissionLevel) {
-    return this.channel.permissions.check(this, permissionId, defaultPermissionLevel);
+User.prototype.hasPermission = function (id, defaultLevel) {
+    return this.channel.getPermission(id, defaultLevel).check(this);
 };
 /**
  * Sends a private message to the User
