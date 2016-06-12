@@ -15,12 +15,40 @@ var MessageType = require('./messagetypes');
  * @returns {Message}
  */
 var Message = function (channel, recieveDate, sender, content, id, type, extraData) {
+    /**
+     * The channel the message was recieved from
+     * @type Channel
+     */
     this.channel = channel;
+    /**
+     * The date the message was recieved
+     * @type Date
+     */
     this.recieveDate = recieveDate;
+    /**
+     * The sender of the message
+     * @type User
+     */
     this.sender = sender;
+    /**
+     * The content of the message
+     * @type String
+     */
     this.content = content;
+    /**
+     * The id of the message
+     * @type Object
+     */
     this.id = id;
+    /**
+     * The type of message
+     * @type Integer
+     */
     this.type = type;
+    /**
+     * Extra data associated with the message
+     * @type Object
+     */
     this.extraData = extraData;
 };
 /**
@@ -41,7 +69,10 @@ Message.prototype.replyPrivate = function (message) {
     // or
     return this.sender.sendPrivateMessage(message);
 };
-
+/**
+ * Checks to see if the message is a duplicate
+ * @returns {Boolean}
+ */
 Message.prototype.isDuplicate = function () {
     // TODO: implement Message.isDuplicate()
     return false;

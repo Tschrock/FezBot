@@ -4,7 +4,9 @@ var Timeout = require('./timeout');
 
 /**
  * The prefix to use when saving and loading from storage.
- * @type String
+ * @constant
+ * @type {String}
+ * @memberOf TimeoutsManager
  */
 var TIMEOUTS_STORAGE_PREFIX = "timeouts_";
 var permRegex = new RegExp(TIMEOUTS_STORAGE_PREFIX);
@@ -17,6 +19,9 @@ var permRegex = new RegExp(TIMEOUTS_STORAGE_PREFIX);
  * @returns {PermissionManager}
  */
 var TimeoutsManager = function (storage, channel) {
+    /**
+     * the storage used 
+     */
     this.storage = storage;
     this.channel = channel;
 };

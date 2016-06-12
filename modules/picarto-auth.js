@@ -4,13 +4,29 @@ var request = require("request");
 var io = require("socket.io-client");
 
 var accountCache = {};
-module.exports = {
+
+/**
+ * Auth service for getting chat tokens from picarto
+ */
+var PicartoAuth = {
+    /**
+     * Extracts the chat token from an html document
+     * @param {String} body
+     * @returns {String}
+     */
     getTokenFromHTML: function (body) {
         var func = body.match(/initChatVariables(.*);/)[0];
         var getLastApostrophe = func.lastIndexOf("'");
         var token = func.substring(func.lastIndexOf("'", getLastApostrophe - 1) + 1, getLastApostrophe);
         return token;
     },
+    /**
+     * Gets an authenticated cookie jar for a Picarto account
+     * @param {String} account
+     * @param {String} password
+     * @param {Function} callback
+     * @returns {undefined}
+     */
     getAuthedCookieJar: function (account, password, callback) {
         if (accountCache[account.toLowerCase()]) {
             callback(false, accountCache[account.toLowerCase()]);
@@ -42,6 +58,13 @@ module.exports = {
             });
         }
     },
+    /**
+     * Gets a chat token using the given cookie jar
+     * @param {String} channel
+     * @param {Object=} cookiejar
+     * @param {Function} callback
+     * @returns {undefined}
+     */
     getTokenWithCookiejar: function (channel, cookiejar, callback) {
         var self = this;
         var jar = cookiejar || request.jar();
@@ -69,9 +92,22 @@ module.exports = {
             }
         });
     },
+    /**
+     * Gets a read-only chat token
+     * @param {String} channel
+     * @param {Function} callback
+     * @returns {undefined}
+     */
     getReadOnlyToken: function (channel, callback) {
         this.getTokenWithCookiejar(channel, false, callback);
     },
+    /**
+     * Gets a anonomous chat token
+     * @param {String} channel
+     * @param {String} account
+     * @param {Function} callback
+     * @returns {undefined}
+     */
     getAnonToken: function (channel, account, callback) {
         var self = this;
         var jar = request.jar();
@@ -170,6 +206,14 @@ module.exports = {
             }
         });
     },
+    /**
+     * Gets an authorized chat token using the given picarto acount
+     * @param {String} channel
+     * @param {String} account
+     * @param {String} password
+     * @param {Function} callback
+     * @returns {undefined}
+     */
     getAuthedToken: function (channel, account, password, callback) {
         var self = this;
         this.getAuthedCookieJar(account, password, function (error, jar) {
@@ -181,3 +225,5 @@ module.exports = {
         });
     }
 };
+
+module.exports = PicartoAuth;

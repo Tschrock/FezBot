@@ -5,6 +5,11 @@ var NiceList = require('./nicelist');
 var BotEvent = require('./botevent');
 var CommandMessage = require('./commandmessage');
 
+/**
+ * Common key codes
+ * @enum {String}
+ * @private
+ */
 var KEYS = {
     UP: String.fromCharCode(27, 91, 65),
     DOWN: String.fromCharCode(27, 91, 66),
@@ -20,6 +25,12 @@ var KEYS = {
     CTRL_C: String.fromCharCode(3)
 };
 
+/**
+ * Turns a string into an array of char codes
+ * @private
+ * @param {String} str
+ * @returns {Integer[]}
+ */
 function strToCodeArr(str) {
     var arr = [];
     for (var i = 0; i < str.length; ++i) {
@@ -32,34 +43,33 @@ function showConsoleHelp() {
 
 }
 
-function getCommonString(niceList) {
-    var len = 0;
-    niceList.ForEach(function (x) {
-        if (x.length > len)
-            len = x.length;
-    });
 
-    var str = "";
-    var curchar = "";
-    for (var i = 0; i < len; ++i) {
-        if (!niceList.All(function (x) {
-            if (curchar === "") {
-                curchar = x.charAt(i);
-            }
-            if (x.charAt(i) === "" || curchar !== x.charAt(i)) {
-                return false;
-            }
-            return true;
-        })) {
-            break;
-        } else {
-            str += curchar;
-            curchar = "";
-        }
+/**
+ * Gets a prefix common to all strings in a NiceList
+ * @private
+ * @param {NiceList} strings
+ * @returns {String}
+ */
+function getCommonStringPrefix(strings) {
+    var pos = 0;
+    var first = strings.First();
+    while (strings.All(function (curString) {
+        return curString.length > pos && curString.charAt(pos) === first.charAt(pos);
+    })) {
+        ++pos;
     }
-    return str;
+    return first.substring(0, pos);
 }
 
+/**
+ * A custom-made cli
+ * @constructor
+ * @param {InputStream} stdin
+ * @param {OutputStream} stdout
+ * @param {EventEmiter} eventEmiter
+ * @param {User} stdinUser
+ * @returns {NiceCli}
+ */
 var NiceCLI = function (stdin, stdout, eventEmiter, stdinUser) {
     this.inputBuffer = "";
     this.inputCursor = 0;
@@ -243,7 +253,7 @@ NiceCLI.prototype.handleData = function (key) {
                 var ccEvt = new BotEvent("commandCompletion", this.stdinUser.channel, new CommandMessage(this.stdinUser.channel, new Date(), this.stdinUser, this.inputBuffer, Math.random(), MessageType.GENERIC));
                 this.eventEmiter.emit("commandCompletion", ccEvt);
                 if (ccEvt.data.completionList.Count() > 0) {
-                    var common = getCommonString(ccEvt.data.completionList);
+                    var common = getCommonStringPrefix(ccEvt.data.completionList);
 
                     if (this.inputBuffer.length < common.length || ccEvt.data.completionList.Count() === 1) {
                         this.inputBuffer = common;

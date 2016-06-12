@@ -1,6 +1,10 @@
 'use strict';
 var windows = process.platform.indexOf("win") === 0;
-module.exports = {
+/**
+ * Bot Utilities
+ * @class BotUtil
+ */
+var BotUtil = {
     /**
      * Returns whether or not an object is undefined
      * @param {Object} val
@@ -131,7 +135,15 @@ module.exports = {
     clearStdOut: function () {
         process.stdout.write(windows ? this.repeatStr("\r\n", process.stdout.getWindowSize()[1]) : "\x1B[2J") + "\x1B[0f";
     },
+    /**
+     * Gets a random Integer between `min` and `max`, inclusive
+     * @param {Integer} min
+     * @param {Integer} max
+     * @returns {Integer}
+     */
     getRandomInt: function (min, max) {
         return Math.floor(Math.random() * (max - min + 1)) + min;
     }
 };
+
+module.exports = BotUtil;

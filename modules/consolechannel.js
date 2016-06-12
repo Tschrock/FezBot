@@ -6,6 +6,15 @@ var UserManager = require('./usermanager');
 var Channel = require('./channel');
 var ConsoleUser = require('./consoleuser');
 
+/**
+ * An implimentation of Channel for stdio.
+ * @constructor
+ * @extends Channel
+ * @param {API} api
+ * @param {Stream} stdin
+ * @param {Stream} stdout
+ * @returns {ConsoleChannel}
+ */
 var ConsoleChannel = function (api, stdin, stdout) {
     this._api = api;
     this._token = "";

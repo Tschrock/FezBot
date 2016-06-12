@@ -6,6 +6,7 @@ var User = require('./user');
 
 /**
  * Returns an id for a username
+ * @private
  * @param {String} name
  * @returns {String}
  */
@@ -16,11 +17,16 @@ var idFromUsername = function (name) {
 /**
  * A user manager
  * @constructor
+ * @extends NiceList
  * @param {Channel} channel
  * @returns {UserManager}
  */
 var UserManager = function (channel) {
     NiceList.apply(this, arguments);
+    /**
+     * The channel this UserManager is for
+     * @type {Channel}
+     */
     this.channel = channel;
 };
 UserManager.prototype = Object.create(NiceList.prototype);

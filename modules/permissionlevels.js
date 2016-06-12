@@ -1,5 +1,10 @@
 'use strict';
-module.exports = {
+
+/**
+ * Permission Levels
+ * @enum {Integer}
+ */
+var PermissionLevel = {
     PERMISSION_USER: 1,
     PERMISSION_ADMIN: 2,
     PERMISSION_MOD: 4,
@@ -7,3 +12,5 @@ module.exports = {
     PERMISSION_NONE: 0,
     PERMISSION_ALL: -1
 };
+
+module.exports = PermissionLevel;

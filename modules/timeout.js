@@ -20,7 +20,7 @@ var Timeout = function (manager, id, defaultMs) {
 };
 
 /**
- * Loads permission properties from storage
+ * Loads Timeout properties from storage
  * @returns {undefined}
  */
 Timeout.prototype.load = function () {
@@ -67,10 +67,9 @@ Timeout.prototype.remaining = function () {
 
 /**
  * Checks if the timeout has passed
- * @param {User} user
  * @returns {undefined}
  */
-Timeout.prototype.check = function (user) {
+Timeout.prototype.check = function () {
     if (this.remaining() > 0) {
         return false;
     }

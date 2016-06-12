@@ -4,6 +4,7 @@ var MessageType = require('./messagetypes');
 
 /**
  * Returns an id for a username
+ * @private
  * @returns {String}
  */
 var idFromUsername = function () {
@@ -19,10 +20,33 @@ var idFromUsername = function () {
  */
 var User = function (usermanager, username) {
     this._usermanager = usermanager;
+    /**
+     * The channel the user is from
+     * @type {Channel}
+     */
     this.channel = usermanager.channel;
+    /**
+     * The user's username
+     * @type {String}
+     */
     this.username = username;
+    /**
+     * The user's permission level
+     * @type Integer
+     */
     this.privilegeLevel = 0;
+    /**
+     * Extra data associated with the user
+     * @type {Object}
+     */
     this.extraData = {};
+    /**
+     * The id of the user
+     * @field
+     * @name id
+     * @type {String}
+     * @memberOf User
+     */
     Object.defineProperty(this, "id", {get: idFromUsername});
 };
 /**

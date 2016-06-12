@@ -12,7 +12,15 @@ var PermissionLevels = require('./permissionlevels');
  * @returns {Permission}
  */
 var Permission = function (manager, id, defaultLevel) {
+    /**
+     * The PermissionsManager in charge of the permission
+     * @type PermissionsManager
+     */
     this.manager = manager;
+    /**
+     * The id of the permission
+     * @type String
+     */
     this.id = id;
     this.defaultLevel = defaultLevel || (PermissionLevels.PERMISSION_ADMIN | PermissionLevels.PERMISSION_MOD);
     this.level = false;

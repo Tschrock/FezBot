@@ -6,16 +6,12 @@ var storage = require("node-persist");
 var EventEmitter = require("events");
 
 var NiceList = require('./modules/nicelist');
-var PicartoAuth = require('./modules/picarto-auth');
 var PluginLoader = require('./modules/pluginloader_old');
-
+var PicartoAuth = require('./modules/picarto-auth');
 var ChannelManager = require('./modules/channelmanager');
 var ConsoleChannel = require('./modules/consolechannel');
-
 var NiceCLI = require('./modules/nicecli');
-
-var store = storage.create({dir: process.cwd() + "/storage/main_app"});
-store.initSync();
+var EventTypes = require('./modules/eventtypes');
 
 var API = function () {
     this.version = "2.0.0";
@@ -25,27 +21,27 @@ var API = function () {
     this.plugins = new PluginLoader(this);
     this.sharedStorage = storage.create({dir: process.cwd() + "/storage/shared_storage"});
     this.sharedStorage.initSync();
-    this.jade = require('jade');
-    this.mainAppStorage = store;
+    this.mainAppStorage = storage.create({dir: process.cwd() + "/storage/main_app"});
+    this.mainAppStorage.initSync();
     this.pluginLoader = new PluginLoader(this, storage.create({dir: process.cwd() + "/storage/plugin_loader"}));
 };
 
 var api = new API();
 
-api.events.on("connect", function (event) {
+api.events.on(EventTypes.CONNECT, function (event) {
     console.log("Connected to " + event.source.channelName);
 });
-api.events.on("disconnect", function (event) {
+api.events.on(EventTypes.DISCONNECT, function (event) {
     console.log("Disconnected from " + event.source.channelName);
 });
-api.events.on("consoleCommand", function (event) {
+api.events.on(EventTypes.CONSOLECOMMAND, function (event) {
     if (event.data.command === "quit" || event.data.command === "exit" || event.data.command === "stop") {
         cli.moveStdOut = false;
         process.stdout.write('\n');
         process.exit();
     }
 });
-api.events.on("exception", function (event) {
+api.events.on(EventTypes.EXCEPTION, function (event) {
     if(event.data.channel)
         event.data.channel.sendMessage("(╯°□°）╯︵ uoᴉʇdǝɔxƎ");
     console.log(event);
@@ -68,6 +64,7 @@ console.log("Started plugins:", api.pluginLoader.getStartedPlugins().join(", "))
 
 /**
  * Returns an id for a name
+ * @private
  * @returns {String}
  */
 var idFromName = function () {

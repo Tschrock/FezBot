@@ -3,6 +3,8 @@
 /**
  * The cooldown between sending messages
  * @constant
+ * @memberOf Channel
+ * @protected
  * @type Number
  */
 var SENDMESSAGE_MINTIME = 600;
@@ -10,6 +12,8 @@ var SENDMESSAGE_MINTIME = 600;
 /**
  * The maximum length of individual messages.
  * @constant
+ * @memberOf Channel
+ * @protected
  * @type Number
  */
 var SENDMESSAGE_MAXLENGTH = 255;
@@ -17,13 +21,12 @@ var SENDMESSAGE_MAXLENGTH = 255;
 /**
  * The maximum ammount of times to allow splitting a message.
  * @constant
+ * @memberOf Channel
+ * @protected
  * @type Number
  */
 var SENDMESSAGE_MAXSPLIT = 5;
 
-/**
- * Reqirements
- */
 var io = require("socket.io-client");
 var Entities = require("entities");
 var BotUtil = require('./botutil');
@@ -34,17 +37,16 @@ var CommandMessage = require('./commandmessage');
 var PermissionsManager = require('./permissionsmanager');
 var TimeoutsManager = require('./timeoutsmanager');
 var UserManager = require('./usermanager');
+var EventTypes = require('eventtypes');
 
-/**
- * Returns an id for a username
- * @returns {String}
- */
 var idFromChannelName = function () {
     return this.channelName.toLowerCase();
 };
 
 /**
  * @constant
+ * @memberOf Channel
+ * @protected
  * @type String[]
  */
 var PASSTHROUGH_EVENTS = ["connect", "disconnect", "reconnect", "reconnect_attempt", "chatMode", "channelUsers", "srvMsg", "globalMsg", "clearChat", "commandHelp", "modToolsVisible", "modList", "color", "onlineState", "raffleUsers", "wonRaffle", "runPoll", "showPoll", "pollVotes", "voteResponse", "finishPoll", "gameMode", "adultMode", "commissionsAvailable", "clearUser", "removeMsg", "warnAdult", "warnGaming", "warnMovies", "multiStatus", "endHistory", "ignores"];
@@ -70,11 +72,31 @@ var Channel = function (api, token, channelName, accountName) {
 
     this._api = api;
     this._token = token;
+    /**
+     * The name of the channel
+     * @type String
+     */
     this.channelName = channelName;
     Object.defineProperty(this, 'id', idFromChannelName);
+    /**
+     * The bot's name
+     * @type String
+     */
     this.accountname = accountName;
+    /**
+     * The channel's user manager
+     * @type UserManager
+     */
     this.onlineUsers = new UserManager(this);
+    /**
+     * The channel's permissions manager
+     * @type PermissionsManager
+     */
     this.permissions = new PermissionsManager(api.mainAppStorage, this);
+    /**
+     * The channel's timeout manager
+     * @type TimeoutsManager
+     */
     this.timeouts = new TimeoutsManager(api.mainAppStorage, this);
     var inChatHistory = true;
 
@@ -114,36 +136,36 @@ var Channel = function (api, token, channelName, accountName) {
         self.socket.on(e, passthroughEvent(e));
     });
 
-    this.socket.on("endHistory", function () {
+    this.socket.on(EventTypes.ENDHISTORY, function () {
         inChatHistory = false;
     });
 
-    this.socket.on("channelUsers", function (data) {
+    this.socket.on(EventTypes.CHANNELUSERS, function (data) {
         self.onlineUsers.updateList(data);
     });
-    this.socket.on("userMsg", wrapEvent("userMsg", function (event) {
+    this.socket.on(EventTypes.USERMESSAGE, wrapEvent(EventTypes.USERMESSAGE, function (event) {
         event.data = new Message(self, new Date(), self.onlineUsers.updateUser(event.data), Entities.decode(event.data.msg), event.data.id, MessageType.GENERIC, BotUtil.copyObjectWithout(event.data, ["id", "username", "msg"]));
         if (event.data.content.indexOf('!') === 0) {
             event.data = new CommandMessage(event.data);
-            api.events.emit(event.type = (inChatHistory || event.data.isDuplicate()) ? "chatCommandDuplicate" : "chatCommand", event);
-            if(event.type === "chatCommand" && !event.claimed) {
+            api.events.emit(event.type = EventTypes.CHATCOMMAND + (inChatHistory || event.data.isDuplicate()) ? "Duplicate" : "", event);
+            if(event.type === EventTypes.CHATCOMMAND && !event.claimed) {
                 event.data.reply("Command not found :(");
             }
         } else {
-            api.events.emit(event.type = (inChatHistory || event.data.isDuplicate()) ? "userMsgDuplicate" : "userMsg", event);
+            api.events.emit(event.type = EventTypes.USERMESSAGE + (inChatHistory || event.data.isDuplicate()) ? "Duplicate" : "", event);
         }
     }));
-    this.socket.on("meMsg", wrapEvent("meMsg", function (event) {
+    this.socket.on(EventTypes.MEMESSAGE, wrapEvent(EventTypes.MEMESSAGE, function (event) {
         event.data = new Message(self, new Date(), self.onlineUsers.updateUser(event.data), Entities.decode(event.data.msg), event.data.id, MessageType.SELF, BotUtil.copyObjectWithout(event.data, ["id", "username", "msg"]));
-        api.events.emit(event.type = (inChatHistory || event.data.isDuplicate()) ? "meMsgDuplicate" : "meMsg", event);
+        api.events.emit(event.type = EventTypes.MEMESSAGE + (inChatHistory || event.data.isDuplicate()) ? "Duplicate" : "", event);
     }));
-    this.socket.on("whisper", wrapEvent("whisper", function (event) {
+    this.socket.on(EventTypes.WHISPER, wrapEvent(EventTypes.WHISPER, function (event) {
         event.data = new Message(self, new Date(), self.onlineUsers.updateUser(event.data), Entities.decode(event.data.msg), 'p' + Math.floor(Math.random() * 1000000000), MessageType.PRIVATE, BotUtil.copyObjectWithout(event.data, ["username", "msg"]));
         if (event.data.content.startsWith('!')) {
             event.data = new CommandMessage(event.data);
-            api.events.emit(event.type = "chatCommand", event);
+            api.events.emit(event.type = EventTypes.CHATCOMMAND, event);
         } else {
-            api.events.emit(event.type = "whisper", event);
+            api.events.emit(event.type = EventTypes.WHISPER, event);
         }
     }));
 };
@@ -283,6 +305,12 @@ Channel.prototype.sendMessage = function (messageType, content, _recipient) {
     }
     return true;
 };
+/**
+ * Sends a command through the underlying socket
+ * @param {string} command
+ * @param {object} data
+ * @returns {Boolean}
+ */
 Channel.prototype.sendSocketCommand = function (command, data) {
     if (!this.isConnected()) {
         console.warn("Failed to send message: Channel '" + this.channelName + "' is not connected!");
@@ -291,23 +319,55 @@ Channel.prototype.sendSocketCommand = function (command, data) {
     this._emit(command, data);
     return true;
 };
+/**
+ * Gets a timout
+ * @param {String} id
+ * @param {Integer} defaultMs
+ * @returns {Timeout}
+ */
 Channel.prototype.getTimeout = function (id, defaultMs) {
     return this.timeouts.Get(id, defaultMs);
 };
+/**
+ * Gets a permission
+ * @param {String} id
+ * @param {Integer} defaultLevel
+ * @returns {Permission}
+ */
 Channel.prototype.getPermission = function (id, defaultLevel) {
     return this.permissions.Get(id, defaultLevel);
 };
-
+/**
+ * Checks a timeout
+ * @param {String} id
+ * @param {Integer} defaultMs
+ * @returns {Boolean}
+ */
 Channel.prototype.checkTimeout = function (id, defaultMs) {
     return this.getTimeout(id, defaultMs).check();
 };
+/**
+ * Checks if a user has a permission
+ * @param {User} user
+ * @param {String} id
+ * @param {PermissionLevel} defaultLevel
+ * @returns {Boolean}
+ */
 Channel.prototype.checkPermission = function (user, id, defaultLevel) {
     return this.getPermission(id, defaultLevel).check(user);
 };
-
+/**
+ * Gets the default rejection message for a timeout.
+ * @param {String} id
+ * @returns {String}
+ */
 Channel.prototype.getTimeoutMessage = function (id) {
     return "Too soon, wait another " + this.getTimeout(id).timeRemaining() + " sec. and try again.";
 };
+/**
+ * Gets the default rejection message for a permission.
+ * @returns {String}
+ */
 Channel.prototype.getPermissionMessage = function () {
     return "Sorry, you don't have permission to use this command.";
 };

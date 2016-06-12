@@ -4,7 +4,9 @@ var Permission = require('./permission');
 
 /**
  * The prefix to use when saving and loading from storage.
- * @type String
+ * @constant
+ * @type {String}
+ * @memberOf PermissionsManager
  */
 var PERMISSIONS_STORAGE_PREFIX = "permissions_";
 var permRegex = new RegExp(PERMISSIONS_STORAGE_PREFIX);
@@ -56,6 +58,11 @@ PermissionsManager.prototype.GetAllStores = function () {
     return this.storage.valuesWithKeyMatch(permRegex);
 };
 
+/**
+ * Gets a user's permission level from their picarto userData object
+ * @param {Object} userData
+ * @returns {PermissionLevel}
+ */
 PermissionsManager.prototype.getUserPermissionLevel = function (userData) {
     return !(userData.admin || userData.mod || userData.ptvadmin) | userData.admin << 1 | userData.mod << 2 | userData.ptvadmin << 3;
 };
