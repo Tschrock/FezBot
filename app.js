@@ -53,6 +53,7 @@ api.permissions = api.permissions_manager.permissions;
 api.user_manager = {
     __currentUserData: {},
     updateUserData: function (data) {
+        if(data.banned) return;
         var channel = data.channel.toLowerCase();
         this.__currentUserData[channel.toLowerCase()] = this.__currentUserData[channel.toLowerCase()] || {};
         var un = data.username.toLowerCase();
@@ -61,6 +62,7 @@ api.user_manager = {
     updateUserList: function (channel, data) {
         var fud = {};
         for (var i = 0; i < data.length; ++i) {
+            if(data[i].banned) continue;
             var un = data[i].username.toLowerCase();
             data[i].channel = channel;
             this.__currentUserData[channel.toLowerCase()] = this.__currentUserData[channel.toLowerCase()] || {};
