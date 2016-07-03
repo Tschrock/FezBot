@@ -41,7 +41,7 @@ var EventTypes = {
     /**
      * A user message
      */
-    USERMESSAGE: "usrMsg",
+    USERMESSAGE: "userMsg",
     /**
      * A /me message
      */
@@ -166,6 +166,10 @@ var EventTypes = {
      */
     CONSOLECOMMAND: "consoleCommand",
     /**
+     * A command needs completing
+     */
+    COMMANDCOMPLETION: "commandCompletion",
+    /**
      * A plugin was loaded
      */
     PLUGINLOADED: "pluginLoaded",
@@ -180,7 +184,11 @@ var EventTypes = {
     /**
      * A plugin was started
      */
-    PLUGINSTOPPED: "pluginStopped"
+    PLUGINSTOPPED: "pluginStopped",
+    /**
+     * Used to query plugins if they want to add a cli option/flag
+     */
+    CLIOPTIONS: "CLIOptions"
 };
 
 module.exports = EventTypes;

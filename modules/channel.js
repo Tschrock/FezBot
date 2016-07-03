@@ -37,7 +37,7 @@ var CommandMessage = require('./commandmessage');
 var PermissionsManager = require('./permissionsmanager');
 var TimeoutsManager = require('./timeoutsmanager');
 var UserManager = require('./usermanager');
-var EventTypes = require('eventtypes');
+var EventTypes = require('./eventtypes');
 
 var idFromChannelName = function () {
     return this.channelName.toLowerCase();
@@ -129,7 +129,7 @@ var Channel = function (api, token, channelName, accountName) {
         forceNew: true,
         query: "token=" + this._token
     }), function (data) {
-        console.log(data);
+        //console.log(data);
     });
 
     PASSTHROUGH_EVENTS.forEach(function (e) {
@@ -147,12 +147,12 @@ var Channel = function (api, token, channelName, accountName) {
         event.data = new Message(self, new Date(), self.onlineUsers.updateUser(event.data), Entities.decode(event.data.msg), event.data.id, MessageType.GENERIC, BotUtil.copyObjectWithout(event.data, ["id", "username", "msg"]));
         if (event.data.content.indexOf('!') === 0) {
             event.data = new CommandMessage(event.data);
-            api.events.emit(event.type = EventTypes.CHATCOMMAND + (inChatHistory || event.data.isDuplicate()) ? "Duplicate" : "", event);
-            if(event.type === EventTypes.CHATCOMMAND && !event.claimed) {
+            api.events.emit(event.type = EventTypes.CHATCOMMAND + ((inChatHistory || event.data.isDuplicate()) ? "Duplicate" : ""), event);
+            if (event.type === EventTypes.CHATCOMMAND && !event.claimed) {
                 event.data.reply("Command not found :(");
             }
         } else {
-            api.events.emit(event.type = EventTypes.USERMESSAGE + (inChatHistory || event.data.isDuplicate()) ? "Duplicate" : "", event);
+            api.events.emit(event.type = EventTypes.USERMESSAGE + ((inChatHistory || event.data.isDuplicate()) ? "Duplicate" : ""), event);
         }
     }));
     this.socket.on(EventTypes.MEMESSAGE, wrapEvent(EventTypes.MEMESSAGE, function (event) {
@@ -250,11 +250,11 @@ Channel.prototype._emit = function (type, data) {
  * @returns {Boolean}
  */
 Channel.prototype.sendMessage = function (messageType, content, _recipient) {
-    if(typeof content === 'undefined') {
+    if (typeof content === 'undefined') {
         content = messageType;
         messageType = MessageType.GENERIC;
     }
-    
+
     var preContent = "";
     switch (messageType) {
         case MessageType.GENERIC:

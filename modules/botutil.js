@@ -64,7 +64,7 @@ var BotUtil = {
         var rtn = {};
         for (var key in obj) {
             if (obj.hasOwnProperty(key) && props.indexOf(key) === -1) {
-                rtn[key] = obj.key;
+                rtn[key] = obj[key];
             }
         }
         return rtn;
@@ -92,7 +92,7 @@ var BotUtil = {
     mergeObjectsWithout: function (obj1, obj2, props) {
         for (var key in obj2) {
             if (obj2.hasOwnProperty(key) && props.indexOf(key) === -1) {
-                obj1[key] = obj2.key;
+                obj1[key] = obj2[key];
             }
         }
         return obj1;

@@ -12,6 +12,7 @@ var ChannelManager = require('./modules/channelmanager');
 var ConsoleChannel = require('./modules/consolechannel');
 var NiceCLI = require('./modules/nicecli');
 var EventTypes = require('./modules/eventtypes');
+var BotEvent = require('./modules/botevent');
 
 var API = function () {
     this.version = "2.0.0";
@@ -42,7 +43,7 @@ api.events.on(EventTypes.CONSOLECOMMAND, function (event) {
     }
 });
 api.events.on(EventTypes.EXCEPTION, function (event) {
-    if(event.data.channel)
+    if (event.data.channel)
         event.data.channel.sendMessage("(╯°□°）╯︵ uoᴉʇdǝɔxƎ");
     console.log(event);
 });
@@ -59,7 +60,7 @@ api.pluginLoader.listPlugins().forEach(function (item) {
     }
 });
 
-console.log("Loded plugins:", api.pluginLoader.getLoadedPlugins().join(", "));
+console.log("Loaded plugins:", api.pluginLoader.getLoadedPlugins().join(", "));
 console.log("Started plugins:", api.pluginLoader.getStartedPlugins().join(", "));
 
 /**
@@ -93,10 +94,9 @@ commander.version(api.version).usage("[options]")
         .option("-c, --channel <Picarto Channel>", "Set channel to connect to.")
         .option("-n, --botname <Bot name>", "Set the bot's name.")
         .option("-t, --token <Token>", "Use an already existing token to login")
-        .option("-p, --port <Port>", "Set a custom port")
-        .option("-u, --url <URL>", "Set a custom URL")
-        .option("-l, --password <Password>", "Use the given password.")
-        .parse(process.argv);
+        .option("-l, --password <Password>", "Use the given password.");
+var cliOptionsEvent = new BotEvent(EventTypes.CLIOPTIONS, api, commander);
+commander.parse(process.argv);
 
 var startupOptions = {
     token: commander.token || process.env.PICARTO_TOKEN || false,
@@ -181,7 +181,35 @@ channelsToConnect.ForEach(function (channel) {
     }
 });
 
+console.log();
 
 var CONSOLE_CHANNEL = new ConsoleChannel(api, process.stdin, process.stdout);
 
 var cli = new NiceCLI(process.stdin, process.stdout, api.events, CONSOLE_CHANNEL.stdinUser);
+
+api.events.on(EventTypes.CONSOLECOMMAND, function(event) {
+    var command = event.data;
+    if((command.command === 'pluginloader' || command.command === 'pl') && event.claim()) {
+        var subcommand = command.parameters.shift();
+        switch (subcommand) {
+            case 'load':
+                api.pluginLoader.loadPlugin(event.data.parameters.join(' '), false);
+                break;
+            case 'start':
+                api.pluginLoader.startPlugin(event.data.parameters.join(' '), false);
+                break;
+            case 'stop':
+                api.pluginLoader.stopPlugin(event.data.parameters.join(' '), false);
+                break;
+            case 'unload':
+                api.pluginLoader.unloadPlugin(event.data.parameters.join(' '), false);
+                break;
+            case 'reload':
+                api.pluginLoader.stopPlugin(event.data.parameters.join(' '), false);
+                api.pluginLoader.unloadPlugin(event.data.parameters.join(' '), false);
+                api.pluginLoader.loadPlugin(event.data.parameters.join(' '), false);
+                api.pluginLoader.startPlugin(event.data.parameters.join(' '), false);
+                break;
+        }
+    }
+});

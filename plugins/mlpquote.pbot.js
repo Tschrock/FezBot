@@ -84,38 +84,33 @@ var list = [
     "IT'S NOT... CREEPY"
 ];
 
-
 function handleCommand(event) {
     var command = event.data;
     if (command.command === 'mlpquote' && event.claim()) {
-
         if (!command.sender.hasPermission("cmd.mlpquote")) {
             command.replyPrivate("Sorry, you don't have permission to use this command.");
 
-        } else if (command.messageType === MessageTypes.PRIVATE || !command.channel.checkTimeout("cmd.mlpquote")) {
+        } else if (command.messageType !== MessageTypes.PRIVATE && !command.channel.checkTimeout("cmd.mlpquote")) {
             command.replyPrivate(command.channel.getTimeoutMessage("cmd.mlpquote"));
 
         } else {
-            if (command.parameters.length > 0) {
-                if (command.parameters[0].toLowerCase() === "list") {
-                    command.reply("List of quotes: " + (api["url"] ? (api.url.url + ":" + api.url.port + "/mlpquotes") : "https://gist.github.com/Tschrock/b382b8672f5468dca45f"));
-                    return;
-                } else if (checkInt(command.parameters[0])) {
-                    command.reply(getQuote(parseInt(command.parameters[0])));
-                    return;
-                }
+            if (command.parameters[0] && command.parameters[0].toLowerCase() === "list") {
+                command.reply("List of quotes: " + (api["url"] ? (api.url.url + ":" + api.url.port + "/mlpquotes") : "https://gist.github.com/Tschrock/b382b8672f5468dca45f"));
+                return;
             }
-            command.reply(getQuote(Math.floor(Math.random() * list.length)));
+            command.reply(getQuote(getInt(command.parameters[0])));
         }
     }
 }
 
 function getQuote(index) {
+    if (typeof index === 'undefined' || index < 0 || index > list.length)
+        index = Math.floor(Math.random() * list.length);
     return list[index - 1] + "  (" + (index) + "/" + list.length + ")";
 }
 
-function checkInt(value) {
-    return isInt(value) && parseInt(value) > 0 && parseInt(value) < (list.length + 1);
+function getInt(value) {
+    return isInt(value) ? parseInt(value) : -1;
 }
 
 function isInt(value) {
@@ -127,7 +122,7 @@ function isInt(value) {
 function servePage(req, res) {
     var path = req.url.split('/');
     if (path[1].toLowerCase() == "mlpquotes") {
-        qlist = list.map(function (x, y) {
+        var qlist = list.map(function (x, y) {
             return {id: y + 1, quote: x}
         });
         api.jade.renderFile(process.cwd() + '/views/list.jade', {list: qlist, page: {title: "MLP Quotes", subheader: "MLP Quotes:", breadcrumb: [["/", "Home"], ["/mlpquotes", "MLP Quotes"]]}}, function (err, html) {

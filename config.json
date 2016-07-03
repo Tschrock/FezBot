@@ -17,5 +17,10 @@
       "name": "PicartoBot",
       "password": false
     }
-  ]
+  ],
+  "plugins": {
+      "wolframalpha": {
+          "apikey": "XXXXXX-XXXXXXXXXX"
+      }
+  }
 }

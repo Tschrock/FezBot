@@ -31,9 +31,9 @@ module.exports = {
         api = _api;
     },
     start: function () {
-        api.Events.on("http", servePage);
+        api.events.on("http", servePage);
     },
     stop: function () {
-        api.Events.removeListener("http", servePage);
+        api.events.removeListener("http", servePage);
     }
 }
