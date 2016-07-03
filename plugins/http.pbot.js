@@ -15,11 +15,6 @@ function initServer(url) {
         url: cliopts.url || ((config.http) ? config.http.url : false) || "localhost",
         port: cliopts.port || ((config.http) ? config.http.port : false) || 8080
     };
-    
-    var httpConfig = {
-        url: "localhost",
-        port: 8080
-    };
 
     if (httpConfig.url.indexOf("://") === -1)
         httpConfig.url = "http://" + httpConfig.url;
