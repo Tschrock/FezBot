@@ -1,33 +1,28 @@
 var api;
 
-function handleMessage(data) {
-    if (data.msg.toLowerCase().split(' ')[0] === "!help") {
-        if (data.whisper || api.timeout_manager.checkTimeout(data.channel, "cmd.help", 20000) || api.permissions_manager.userHasPermission(data, "timeoutbypass.global") || api.permissions_manager.userHasPermission(data, "timeoutbypass.cmd.help")) {
-            if (api.permissions_manager.userHasPermission(data, "cmd.help", api.permissions.PERMISSION_ALL) || api.permissions_manager.isOwner(data)) {
-                if (api["url"]) {
-                    sendMessage(data, "Bot Help: " + api.url.url + ":" + api.url.port + "/help", data.whisper);
-                } else {
-                    sendMessage(data, "No halp available :(", data.whisper);
-                }
-            } else {
-                sendMessage(data, "Sorry, you don't have permission to use this command.", true);
-            }
+var PermissionLevels = require('../modules/permissionlevels');
+var MessageTypes = require('../modules/messagetypes');
+
+function handleCommand(event) {
+    var command = event.data;
+    if (command.command === 'help' && event.claim()) {
+        if (!command.sender.hasPermission("cmd.help", PermissionLevels.PERMISSION_ALL)) {
+            command.replyPrivate("Sorry, you don't have permission to use this command.");
+
+        } else if (command.messageType === MessageTypes.PRIVATE && !command.channel.checkTimeout("cmd.help")) {
+            command.replyPrivate(command.channel.getTimeoutMessage("cmd.help"));
         } else {
-            sendMessage(data, "Too soon, wait another " + api.timeout_manager.getTimeRemaining(data.channel, "cmd." + msgcmd) / 1000 + " sec. and try again (or whisper me).", true);
+            if (api["url"]) {
+                command.reply("Bot Help: " + api.url.url + ":" + api.url.port + "/help");
+            } else {
+                command.reply("No halp available :(");
+            }
         }
     }
 }
 
 function htmlEntities(str) {
     return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
-
-function sendMessage(uData, txt, whisper) {
-    if (typeof whisper !== 'undefined' && whisper) {
-        api.Messages.whisper(uData.username, txt, uData.channel);
-    } else {
-        api.Messages.send(txt, uData.channel);
-    }
 }
 
 var pluginTitle = "Help";
@@ -39,9 +34,9 @@ function servePage(req, res) {
     if (path[1].toLowerCase() === pluginUrl) {
         var commandhelp = [];
 
-        var plugins = api.plugin_manager.listLoadedPlugins();
+        var plugins = api.pluginLoader.getLoadedPlugins();
         for (var pluginFile in plugins) {
-            plugin = api.plugin_manager.getPlugin(plugins[pluginFile]);
+            plugin = api.pluginLoader.getPlugin(plugins[pluginFile]);
             if (plugin.meta_inf && plugin.meta_inf.commandhelp) {
                 commandhelp.push({
                     plugin: "<h4>" + (plugin.meta_inf.pluginurl ? "<a href=\"" + plugin.meta_inf.pluginurl + "\">" : "") + plugin.meta_inf.name + ":" + (plugin.meta_inf.pluginurl ? "</a>" : "") + "</h4>",
@@ -101,13 +96,13 @@ module.exports = {
         api = _api;
     },
     start: function () {
-        api.Events.on("userMsg", handleMessage);
-        api.Events.on("whisper", handleMessage);
-        api.Events.on("http", servePage);
+        api.events.on("chatCommand", handleCommand);
+        api.events.on("consoleCommand", handleCommand);
+        api.events.on("http", servePage);
     },
     stop: function () {
-        api.Events.removeListener("userMsg", handleMessage);
-        api.Events.removeListener("whisper", handleMessage);
-        api.Events.removeListener("http", servePage);
+        api.events.removeListener("chatCommand", handleCommand);
+        api.events.removeListener("consoleCommand", handleCommand);
+        api.events.removeListener("http", servePage);
     }
-}
+};

@@ -19,7 +19,6 @@ var API = function () {
     this.events = new EventEmitter();
     this.channels = new ChannelManager(this);
     this.events.setMaxListeners(0);
-    this.plugins = new PluginLoader(this);
     this.sharedStorage = storage.create({dir: process.cwd() + "/storage/shared_storage"});
     this.sharedStorage.initSync();
     this.mainAppStorage = storage.create({dir: process.cwd() + "/storage/main_app"});

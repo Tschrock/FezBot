@@ -12,14 +12,14 @@ function handleCommand(event) {
         } else if (command.messageType === MessageTypes.PRIVATE && !command.channel.checkTimeout("cmd.random")) {
             command.replyPrivate(command.channel.getTimeoutMessage("cmd.random"));
         } else {
-            var users = command.channel.onlineUsers.Where(function (user) {
+            var users = command.channel.onlineUsers.Where(function (u) {
+                return !u.extraData.banned;
+            }).Where(function (user) {
                 return user.hasPermission("cmd.random.include", PermissionLevels.PERMISSION_ALL);
             });
 
             if (users.Count() > 0) {
-                command.reply("Random user: *[" + users.Where(function (u) {
-                    return !u.extraData.banned;
-                }).Random().username + "]");
+                command.reply("Random user: *[" + users.Random().username + "]");
             } else {
                 command.reply("Couldn't find any users :(");
             }

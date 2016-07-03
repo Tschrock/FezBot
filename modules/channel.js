@@ -77,7 +77,7 @@ var Channel = function (api, token, channelName, accountName) {
      * @type String
      */
     this.channelName = channelName;
-    Object.defineProperty(this, 'id', idFromChannelName);
+    this.id = channelName.toLowerCase();
     /**
      * The bot's name
      * @type String

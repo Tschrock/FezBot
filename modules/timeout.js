@@ -52,6 +52,7 @@ Timeout.prototype.save = function (_store) {
     store.timeouts[this.id] = {
         id: this.id,
         ms: this.ms,
+        defaultMs: this.defaultMs,
         lastDateTime: this.lastDateTime
     };
     this.manager.SaveStore(store);

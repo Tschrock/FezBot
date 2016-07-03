@@ -86,7 +86,7 @@ Permission.prototype.check = function (user) {
  * @returns {undefined}
  */
 Permission.prototype.blacklist = function (user) {
-    this.blacklist[user.id] = user.username;
+    this.blacklist[user.id || user.toLowerCase()] = user.username || user;
     this.save();
 };
 
@@ -96,7 +96,7 @@ Permission.prototype.blacklist = function (user) {
  * @returns {undefined}
  */
 Permission.prototype.unblacklist = function (user) {
-    delete this.blacklist[user.id];
+    delete this.blacklist[user.id || user.toLowerCase()];
     this.save();
 };
 
@@ -106,7 +106,7 @@ Permission.prototype.unblacklist = function (user) {
  * @returns {undefined}
  */
 Permission.prototype.whitelist = function (user) {
-    this.whitelist[user.id] = user.username;
+    this.whitelist[user.id || user.toLowerCase()] = user.username || user;
     this.save();
 };
 
@@ -116,7 +116,7 @@ Permission.prototype.whitelist = function (user) {
  * @returns {undefined}
  */
 Permission.prototype.unwhitelist = function (user) {
-    delete this.whitelist[user.id];
+    delete this.whitelist[user.id || user.toLowerCase()];
     this.save();
 };
 

@@ -25,7 +25,7 @@ function initServer(url) {
         httpConfig.url = "http://" + httpConfig.url;
 
     if (typeof config.http.enabled === 'undefined' || config.http.enabled) {
-
+        console.log(api.url,  httpConfig);
         server = http.createServer(function (req, res) {
             res.writeHead(200);
             try {
@@ -57,7 +57,7 @@ function initServer(url) {
                 console.error("Unable to listen on port", httpConfig.port, error);
                 return;
             } else {
-                api.url = url;
+                api.url = httpConfig;
                 console.log("Enter " + httpConfig.url + ":" + httpConfig.port + " in a browser to access web functions.");
             }
         });
