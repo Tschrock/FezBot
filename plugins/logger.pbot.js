@@ -47,7 +47,7 @@ function servePage(req, res) {
             if (channels.hasOwnProperty(allRecords[record].channel)) {
                 channels[allRecords[record].channel].records++;
                 if (new Date(allRecords[record].date) > new Date(channels[allRecords[record].channel].date)) {
-                    channels[allRecords[record].channel].date = allRecords[record].date();
+                    channels[allRecords[record].channel].date = allRecords[record].date;
                 }
             } else {
                 channels[allRecords[record].channel] = {channel: allRecords[record].channel, date: allRecords[record].date, records: 1};
