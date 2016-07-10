@@ -1,9 +1,7 @@
 'use strict';
 
-var MessageType = require('./messagetypes');
 var NiceList = require('./nicelist');
-var BotEvent = require('./botevent');
-var CommandMessage = require('./commandmessage');
+var EventEmitter = require("events");
 
 /**
  * Common key codes
@@ -67,10 +65,9 @@ function getCommonStringPrefix(strings) {
  * @param {InputStream} stdin
  * @param {OutputStream} stdout
  * @param {EventEmiter} eventEmiter
- * @param {User} stdinUser
  * @returns {NiceCli}
  */
-var NiceCLI = function (stdin, stdout, eventEmiter, stdinUser) {
+var NiceCLI = function (stdin, stdout, eventEmiter, prompt) {
     this.inputBuffer = "";
     this.inputCursor = 0;
     this.commandHistory = [];
@@ -78,8 +75,7 @@ var NiceCLI = function (stdin, stdout, eventEmiter, stdinUser) {
     this.historyCursor = 0;
     this.prompt = "ChatBot> ";
     this.moveStdOut = false;
-    this.eventEmiter = eventEmiter;
-    this.stdinUser = stdinUser;
+    this.events = eventEmiter || new EventEmitter();
 
     this.stdin = stdin;
     this.stdout = stdout;
@@ -91,13 +87,16 @@ var NiceCLI = function (stdin, stdout, eventEmiter, stdinUser) {
     var self = this;
 
     this.real_stdout_write = this.stdout.write;
+    this.directwrite = function () {
+        this.real_stdout_write.apply(this.stdout, arguments);
+    };
     this.stdout.write = function () {
         if (self.moveStdOut) {
             self.moveStdOut = false;
             self.clearLine();
             self.cursorTo(0);
             self.real_stdout_write.apply(self.stdout, arguments);
-            self.showPrompt();
+            self.redrawInputPrompt();
             self.moveStdOut = true;
         } else {
             self.real_stdout_write.apply(self.stdout, arguments);
@@ -109,13 +108,13 @@ var NiceCLI = function (stdin, stdout, eventEmiter, stdinUser) {
     });
 
     this.moveStdOut = false;
-    this.showPrompt();
+    this.redrawInputPrompt();
     this.moveStdOut = true;
 };
 
 
 NiceCLI.prototype.clearLine = function () {
-    this.stdout.write('\x1b[2K');
+    this.directwrite('\x1b[2K');
 };
 
 NiceCLI.prototype.cursorTo = function (x, y) {
@@ -123,27 +122,27 @@ NiceCLI.prototype.cursorTo = function (x, y) {
         throw new Error('Can\'t set cursor row without also setting it\'s column');
 
     if (typeof y !== 'number') {
-        this.stdout.write('\x1b[' + (x + 1) + 'G');
+        this.directwrite('\x1b[' + (x + 1) + 'G');
     } else {
-        this.stdout.write('\x1b[' + (y + 1) + ';' + (x + 1) + 'H');
+        this.directwrite('\x1b[' + (y + 1) + ';' + (x + 1) + 'H');
     }
 };
 
 NiceCLI.prototype.moveCursor = function (dx, dy) {
     if (dx < 0) {
-        this.stdout.write('\x1b[' + (-dx) + 'D');
+        this.directwrite('\x1b[' + (-dx) + 'D');
     } else if (dx > 0) {
-        this.stdout.write('\x1b[' + dx + 'C');
+        this.directwrite('\x1b[' + dx + 'C');
     }
 
     if (dy < 0) {
-        this.stdout.write('\x1b[' + (-dy) + 'A');
+        this.directwrite('\x1b[' + (-dy) + 'A');
     } else if (dy > 0) {
-        this.stdout.write('\x1b[' + dy + 'B');
+        this.directwrite('\x1b[' + dy + 'B');
     }
 };
 
-NiceCLI.prototype.showPrompt = function () {
+NiceCLI.prototype.redrawInputPrompt = function () {
     this.clearLine();
     this.cursorTo(0);
     this.stdout.write(this.prompt + this.inputBuffer);
@@ -157,7 +156,7 @@ NiceCLI.prototype.historyUp = function () {
     if (this.historyCursor++ < this.commandHistory.length) {
         this.inputBuffer = this.commandHistory[this.commandHistory.length - this.historyCursor];
         this.inputCursor = this.inputBuffer.length;
-        this.showPrompt();
+        this.redrawInputPrompt();
     } else {
         this.historyCursor = this.commandHistory.length;
     }
@@ -215,25 +214,19 @@ NiceCLI.prototype.handleData = function (key) {
                 }
                 this.historyCursor = 0;
                 this.moveStdOut = true;
-                var ccEvt = new BotEvent("consoleCommand", this.stdinUser.channel, new CommandMessage(this.stdinUser.channel, new Date(), this.stdinUser, this.inputBuffer, Math.random(), MessageType.GENERIC));
-                ccEvt.cmdHelp = new NiceList();
-                this.eventEmiter.emit("consoleCommand", ccEvt);
-                if (!ccEvt.claimed) {
-                    console.log("Command '" + ccEvt.data.command + "' could not be found!");
-                    showConsoleHelp(ccEvt.cmdHelp);
-                }
+                    this.events.emit("consoleCommand", this.inputBuffer);
                 this.moveStdOut = false;
             }
             this.inputBuffer = "";
             this.inputCursor = 0;
-            this.showPrompt();
+            this.redrawInputPrompt();
             break;
         case KEYS.BACKSPACE:
             this.inputCursor--;
             if (this.inputCursor >= 0) {
                 var afterTxt = this.inputBuffer.slice(this.inputCursor + 1, this.inputBuffer.length);
                 this.inputBuffer = this.inputBuffer.slice(0, this.inputCursor) + afterTxt;
-                this.showPrompt();
+                this.redrawInputPrompt();
             } else {
                 this.inputCursor = 0;
             }
@@ -242,7 +235,7 @@ NiceCLI.prototype.handleData = function (key) {
             if (this.inputCursor >= 0) {
                 var afterTxt = this.inputBuffer.slice(this.inputCursor + 1, this.inputBuffer.length);
                 this.inputBuffer = this.inputBuffer.slice(0, this.inputCursor) + afterTxt;
-                this.showPrompt();
+                this.redrawInputPrompt();
             } else {
                 this.inputCursor = 0;
             }
@@ -250,39 +243,44 @@ NiceCLI.prototype.handleData = function (key) {
         case KEYS.TAB:
             if (this.inputBuffer !== "") {
                 this.moveStdOut = true;
-                var ccEvt = new BotEvent("commandCompletion", this.stdinUser.channel, new CommandMessage(this.stdinUser.channel, new Date(), this.stdinUser, this.inputBuffer, Math.random(), MessageType.GENERIC));
-                this.eventEmiter.emit("commandCompletion", ccEvt);
-                if (ccEvt.data.completionList.Count() > 0) {
-                    var common = getCommonStringPrefix(ccEvt.data.completionList);
-
-                    if (this.inputBuffer.length < common.length || ccEvt.data.completionList.Count() === 1) {
+                var ccEvt = {
+                    input: this.inputBuffer,
+                    suggestions: new NiceList()
+                };
+                this.events.emit("commandCompletion", ccEvt);
+                if (ccEvt.suggestions.Count() > 0) {
+                    var common = getCommonStringPrefix(ccEvt.suggestions);
+                    if (this.inputBuffer.length < common.length || ccEvt.suggestions.Count() === 1) {
                         this.inputBuffer = common;
                         this.inputCursor = this.inputBuffer.length;
                     } else {
-                        console.log(ccEvt.data.completionList.AsArray().join("        "));
+                        this.moveStdOut = false;
+                        this.stdout.write('\n');
+                        this.moveStdOut = true;
+                        console.log(ccEvt.suggestions.AsArray().join("        "));
                     }
                 }
                 this.moveStdOut = false;
             }
-            this.showPrompt();
-            break;
-        case KEYS.ESC:
+            this.redrawInputPrompt();
             break;
         case KEYS.HOME:
             this.inputCursor = 0;
-            this.cursorTo(this.prompt.length + this.inputCursor);
+            this.redrawInputPrompt();
             break;
         case KEYS.END:
             this.inputCursor = this.inputBuffer.length;
-            this.cursorTo(this.prompt.length + this.inputCursor);
+            this.redrawInputPrompt();
+            break;
+        case KEYS.ESC:
             break;
         default:
             if (/^[\u0020-\u007e\u00a0-\u00ff]*$/.test(key)) {
                 this.inputBuffer = this.inputBuffer.slice(0, this.inputCursor) + key + this.inputBuffer.slice(this.inputCursor);
                 this.inputCursor += key.length;
-                this.showPrompt();
+                this.redrawInputPrompt();
             } else {
-                console.log(strToCodeArr(key));
+                console.log("[NiceCLI] Unknown Control Character: ", strToCodeArr(key), " -> '", key, "'");
             }
     }
     this.moveStdOut = true;

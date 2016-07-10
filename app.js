@@ -13,6 +13,8 @@ var ConsoleChannel = require('./modules/consolechannel');
 var NiceCLI = require('./modules/nicecli');
 var EventTypes = require('./modules/eventtypes');
 var BotEvent = require('./modules/botevent');
+var MessageType = require('./modules/messagetypes');
+var CommandMessage = require('./modules/commandmessage');
 
 var API = function () {
     this.version = "2.0.0";
@@ -184,11 +186,27 @@ console.log();
 
 var CONSOLE_CHANNEL = new ConsoleChannel(api, process.stdin, process.stdout);
 
-var cli = new NiceCLI(process.stdin, process.stdout, api.events, CONSOLE_CHANNEL.stdinUser);
+var cli = new NiceCLI(process.stdin, process.stdout);
 
-api.events.on(EventTypes.CONSOLECOMMAND, function(event) {
+cli.events.on(EventTypes.CONSOLECOMMAND, function (command) {
+    var ccEvt = new BotEvent(EventTypes.CONSOLECOMMAND, CONSOLE_CHANNEL.stdinUser.channel, new CommandMessage(CONSOLE_CHANNEL.stdinUser.channel, new Date(), CONSOLE_CHANNEL.stdinUser, command, Math.random(), MessageType.GENERIC));
+    ccEvt.cmdHelp = new NiceList();
+    api.events.emit("consoleCommand", ccEvt);
+    if (!ccEvt.claimed) {
+        console.log("Command '" + ccEvt.data.command + "' could not be found!");
+        //showConsoleHelp(ccEvt.cmdHelp);
+    }
+});
+
+cli.events.on(EventTypes.COMMANDCOMPLETION, function (completionData) {
+    var ccEvt = new BotEvent(EventTypes.COMMANDCOMPLETION, CONSOLE_CHANNEL.stdinUser.channel, new CommandMessage(CONSOLE_CHANNEL.stdinUser.channel, new Date(), CONSOLE_CHANNEL.stdinUser, completionData.input, Math.random(), MessageType.GENERIC));
+    ccEvt.data.completionList = completionData.suggestions;
+    api.events.emit(EventTypes.COMMANDCOMPLETION, ccEvt);
+});
+
+api.events.on(EventTypes.CONSOLECOMMAND, function (event) {
     var command = event.data;
-    if((command.command === 'pluginloader' || command.command === 'pl') && event.claim()) {
+    if ((command.command === 'pluginloader' || command.command === 'pl') && event.claim()) {
         var subcommand = command.parameters.shift();
         switch (subcommand) {
             case 'load':
