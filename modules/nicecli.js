@@ -3,6 +3,14 @@
 var NiceList = require('./nicelist');
 var EventEmitter = require("events");
 
+var assert = require('assert');
+
+var DEBUG = false;
+
+function debug() {
+    DEBUG && console.error.apply(console, arguments);
+}
+
 /**
  * Common key codes
  * @enum {String}
@@ -91,13 +99,17 @@ var NiceCLI = function (stdin, stdout, eventEmiter, prompt) {
     };
     this.stdout.write = function () {
         if (self.moveStdOut) {
+            debug("WRITE: ", arguments);
+            assert.notEqual(arguments[0], "\n");
             self.moveStdOut = false;
             self.clearLine();
             self.cursorTo(0);
             self.real_stdout_write.apply(self.stdout, arguments);
             self.redrawInputPrompt();
             self.moveStdOut = true;
+            debug("--");
         } else {
+            debug("WRITE: ", arguments ,"--");
             self.real_stdout_write.apply(self.stdout, arguments);
         }
     };
@@ -113,10 +125,12 @@ var NiceCLI = function (stdin, stdout, eventEmiter, prompt) {
 
 
 NiceCLI.prototype.clearLine = function () {
+    debug("CLEARLINE");
     this.directwrite('\x1b[2K');
 };
 
 NiceCLI.prototype.cursorTo = function (x, y) {
+    debug("CURSORTO: ", x, y);
     if (typeof x !== 'number')
         throw new Error('Can\'t set cursor row without also setting it\'s column');
 
@@ -128,6 +142,7 @@ NiceCLI.prototype.cursorTo = function (x, y) {
 };
 
 NiceCLI.prototype.moveCursor = function (dx, dy) {
+    debug("MOVECURSOR: ", dx, dy);
     if (dx < 0) {
         this.directwrite('\x1b[' + (-dx) + 'D');
     } else if (dx > 0) {
@@ -179,6 +194,7 @@ NiceCLI.prototype.historyDown = function () {
 };
 
 NiceCLI.prototype.handleData = function (key) {
+    debug("READ: ", key);
     this.moveStdOut = false;
     switch (key) {
         case KEYS.CTRL_C:
@@ -304,6 +320,8 @@ NiceCLI.prototype.handleData = function (key) {
             }
     }
     this.moveStdOut = true;
+    
+    debug("-");
 };
 
 NiceCLI.prototype.prompt = function (promptMsg, returnFunction, hideInput, allowBlank) {
