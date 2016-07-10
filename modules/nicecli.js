@@ -37,11 +37,6 @@ function strToCodeArr(str) {
     return arr;
 }
 
-function showConsoleHelp() {
-
-}
-
-
 /**
  * Gets a prefix common to all strings in a NiceList
  * @private
@@ -73,9 +68,13 @@ var NiceCLI = function (stdin, stdout, eventEmiter, prompt) {
     this.commandHistory = [];
     this.historyBuffer = "";
     this.historyCursor = 0;
-    this.prompt = "ChatBot> ";
+    this.cliPrompt = prompt || "NiceCLI> ";
     this.moveStdOut = false;
     this.events = eventEmiter || new EventEmitter();
+    this.promptMode = false;
+    this.promptModePrompt = "?";
+    this.promptModeReturn = false;
+    this.promptModeEcho = true;
 
     this.stdin = stdin;
     this.stdout = stdout;
@@ -145,8 +144,10 @@ NiceCLI.prototype.moveCursor = function (dx, dy) {
 NiceCLI.prototype.redrawInputPrompt = function () {
     this.clearLine();
     this.cursorTo(0);
-    this.stdout.write(this.prompt + this.inputBuffer);
-    this.cursorTo(this.prompt.length + this.inputCursor);
+    var prompt = this.promptMode ? this.promptModePrompt : this.cliPrompt;
+    var buffer = this.promptModeEcho ? this.inputBuffer : this.inputBuffer.replace(/./g, '*');
+    this.stdout.write(prompt + buffer);
+    this.cursorTo(prompt.length + this.inputCursor);
 };
 
 NiceCLI.prototype.historyUp = function () {
@@ -171,7 +172,7 @@ NiceCLI.prototype.historyDown = function () {
             this.inputBuffer = this.commandHistory[this.commandHistory.length - this.historyCursor];
         }
         this.inputCursor = this.inputBuffer.length;
-        this.showPrompt();
+        this.redrawInputPrompt();
     } else {
         this.historyCursor = 0;
     }
@@ -185,12 +186,14 @@ NiceCLI.prototype.handleData = function (key) {
             process.exit();
             break;
         case KEYS.UP:
-            //this.moveHistory(1);
-            this.historyUp();
+            if (!this.promptMode) {
+                this.historyUp();
+            }
             break;
         case KEYS.DOWN:
-            //this.moveHistory(-1);
-            this.historyDown();
+            if (!this.promptMode) {
+                this.historyDown();
+            }
             break;
         case KEYS.RIGHT:
             if (this.inputCursor++ < this.inputBuffer.length) {
@@ -208,13 +211,30 @@ NiceCLI.prototype.handleData = function (key) {
             break;
         case KEYS.ENTER:
             this.stdout.write('\n');
-            if (this.inputBuffer !== "") {
-                if (this.commandHistory[this.commandHistory.length - 1] !== this.inputBuffer) {
+            if (this.inputBuffer !== "" || this.promptModeAllowBlank) {
+                if (!this.promptMode && this.commandHistory[this.commandHistory.length - 1] !== this.inputBuffer) {
                     this.commandHistory.push(this.inputBuffer);
                 }
                 this.historyCursor = 0;
                 this.moveStdOut = true;
+                if (this.promptMode) {
+                    this.promptMode = false;
+                    this.promptModePrompt = "?";
+                    this.promptModeEcho = true;
+                    
+                    var rtn = this.promptModeReturn;
+                    this.promptModeReturn = false;
+                    
+                    var rslt = this.inputBuffer;
+                    this.inputBuffer = this.promptModeOldBuffer;
+                    this.promptModeOldBuffer = "";
+                    
+                    if (rtn) {
+                        rtn.call(null, rslt);
+                    }
+                } else {
                     this.events.emit("consoleCommand", this.inputBuffer);
+                }
                 this.moveStdOut = false;
             }
             this.inputBuffer = "";
@@ -241,7 +261,7 @@ NiceCLI.prototype.handleData = function (key) {
             }
             break;
         case KEYS.TAB:
-            if (this.inputBuffer !== "") {
+            if (!this.promptMode && this.inputBuffer !== "") {
                 this.moveStdOut = true;
                 var ccEvt = {
                     input: this.inputBuffer,
@@ -284,6 +304,16 @@ NiceCLI.prototype.handleData = function (key) {
             }
     }
     this.moveStdOut = true;
+};
+
+NiceCLI.prototype.prompt = function (promptMsg, returnFunction, hideInput, allowBlank) {
+    this.promptMode = true;
+    this.promptModeOldBuffer = this.inputBuffer;
+    this.inputBuffer = "";
+    this.promptModePrompt = promptMsg;
+    this.promptModeReturn = returnFunction;
+    this.promptModeEcho = !(hideInput || false);
+    this.promptModeAllowBlank = allowBlank || false;
 };
 
 module.exports = NiceCLI;
