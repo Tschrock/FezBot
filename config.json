@@ -6,16 +6,10 @@
   },
   "channels": [
     {
-      "channel": "ExampleChannel",
+      "provider": "picarto",
       "enabled": false,
-      "name": "PicartoBot",
-      "muted": false
-    }
-  ],
-  "accounts": [
-    {
-      "name": "PicartoBot",
-      "password": false
+      "channel": "ExampleChannel",
+      "account": "PicartoBot"
     }
   ],
   "plugins": {

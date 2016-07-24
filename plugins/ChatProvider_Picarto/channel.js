@@ -1,13 +1,12 @@
 'use strict';
-
-/**
- * The cooldown between sending messages
- * @constant
- * @memberOf Channel
- * @protected
- * @type Number
- */
-var SENDMESSAGE_MINTIME = 600;
+        /**
+         * The cooldown between sending messages
+         * @constant
+         * @memberOf Channel
+         * @protected
+         * @type Number
+         */
+        var SENDMESSAGE_MINTIME = 600;
 
 /**
  * The maximum length of individual messages.
@@ -29,15 +28,16 @@ var SENDMESSAGE_MAXSPLIT = 5;
 
 var io = require("socket.io-client");
 var Entities = require("entities");
-var BotUtil = require('./botutil');
-var BotEvent = require('./botevent');
-var MessageType = require('./messagetypes');
-var Message = require('./message');
-var CommandMessage = require('./commandmessage');
-var PermissionsManager = require('./permissionsmanager');
-var TimeoutsManager = require('./timeoutsmanager');
-var UserManager = require('./usermanager');
-var EventTypes = require('./eventtypes');
+var BotUtil = require('../../modules/botutil');
+var BotEvent = require('../../modules/botevent');
+var MessageType = require('../../modules/messagetypes');
+var Message = require('../../modules/message');
+var CommandMessage = require('../../modules/commandmessage');
+var PermissionsManager = require('../../modules/permissionsmanager');
+var TimeoutsManager = require('../../modules/timeoutsmanager');
+var UserManager = require('../../modules/usermanager');
+var EventTypes = require('../../modules/eventtypes');
+var PicartoAuth = require('./picarto-auth');
 
 var idFromChannelName = function () {
     return this.channelName.toLowerCase();
@@ -60,29 +60,23 @@ var PASSTHROUGH_EVENTS = ["connect", "disconnect", "reconnect", "reconnect_attem
  * @param {String} accountName
  * @returns {Channel}
  */
-var Channel = function (api, token, channelName, accountName) {
-    if (!token)
-        throw new Error("Error: no token!");
-    if (!channelName)
-        throw new Error("Error: no channelName!");
-    if (!accountName)
+var Channel = function (api, connectOptions) {
+
+    if (!connectOptions.account)
         console.warn("Warning: No accountName!");
 
-    var self = this;
-
     this._api = api;
-    this._token = token;
     /**
      * The name of the channel
      * @type String
      */
-    this.channelName = channelName;
-    this.id = channelName.toLowerCase();
+    this.channelName = connectOptions.channel;
+    this.id = this.channelName.toLowerCase();
     /**
      * The bot's name
      * @type String
      */
-    this.accountname = accountName;
+    this.accountname = connectOptions.account;
     /**
      * The channel's user manager
      * @type UserManager
@@ -98,77 +92,102 @@ var Channel = function (api, token, channelName, accountName) {
      * @type TimeoutsManager
      */
     this.timeouts = new TimeoutsManager(api.mainAppStorage, this);
-    var inChatHistory = true;
 
-    function wrapEvent(event, callback) {
-        return function (data) {
-            var eData = new BotEvent(event, self, data);
-            try {
-                callback.call(self, eData);
-            } catch (e) {
-                var eeData = new BotEvent("exception", self, {event: eData, exception: e});
-                try {
-                    api.events.emit("exception", eeData);
-                } catch (e) {
-                    console.log("Error handling exception:");
-                    console.log(e);
-                    console.log(e.stack);
+    var self = this;
+    var connect = function (error, token) {
+        console.log(token);
+        if (error) {
+            console.log(error);
+        } else {
+            self._token = token;
+            var inChatHistory = true;
+
+            function wrapEvent(event, callback) {
+                return function (data) {
+                    var eData = new BotEvent(event, self, data);
+                    try {
+                        callback.call(self, eData);
+                    } catch (e) {
+                        var eeData = new BotEvent("exception", self, {event: eData, exception: e});
+                        try {
+                            api.events.emit("exception", eeData);
+                        } catch (e) {
+                            console.log("Error handling exception:");
+                            console.log(e);
+                            console.log(e.stack);
+                        }
+                    }
+                };
+            }
+
+            function passthroughEvent(event) {
+                return wrapEvent(event, function (eData) {
+                    api.events.emit(event, eData);
+                });
+            }
+
+            self.socket = BotUtil.interceptSocketEvents(io.connect("https://nd1.picarto.tv:443", {
+                secure: true,
+                forceNew: true,
+                query: "token=" + self._token
+            }), function (data) {
+                //console.log(data);
+            });
+
+            PASSTHROUGH_EVENTS.forEach(function (e) {
+                self.socket.on(e, passthroughEvent(e));
+            });
+
+            self.socket.on(EventTypes.ENDHISTORY, function () {
+                inChatHistory = false;
+            });
+
+            self.socket.on(EventTypes.CHANNELUSERS, function (data) {
+                self.onlineUsers.updateList(data);
+            });
+            self.socket.on(EventTypes.USERMESSAGE, wrapEvent(EventTypes.USERMESSAGE, function (event) {
+                event.data = new Message(self, new Date(), self.onlineUsers.updateUser(event.data), Entities.decode(event.data.msg), event.data.id, MessageType.GENERIC, BotUtil.copyObjectWithout(event.data, ["id", "username", "msg"]));
+                if (event.data.content.indexOf('!') === 0) {
+                    event.data = new CommandMessage(event.data);
+                    api.events.emit(event.type = EventTypes.CHATCOMMAND + ((inChatHistory || event.data.isDuplicate()) ? "Duplicate" : ""), event);
+                    if (event.type === EventTypes.CHATCOMMAND && !event.claimed) {
+                        event.data.reply("Command not found :(");
+                    }
+                } else {
+                    api.events.emit(event.type = EventTypes.USERMESSAGE + ((inChatHistory || event.data.isDuplicate()) ? "Duplicate" : ""), event);
                 }
-            }
-        };
+            }));
+            self.socket.on(EventTypes.MEMESSAGE, wrapEvent(EventTypes.MEMESSAGE, function (event) {
+                event.data = new Message(self, new Date(), self.onlineUsers.updateUser(event.data), Entities.decode(event.data.msg), event.data.id, MessageType.SELF, BotUtil.copyObjectWithout(event.data, ["id", "username", "msg"]));
+                api.events.emit(event.type = EventTypes.MEMESSAGE + (inChatHistory || event.data.isDuplicate()) ? "Duplicate" : "", event);
+            }));
+            self.socket.on(EventTypes.WHISPER, wrapEvent(EventTypes.WHISPER, function (event) {
+                event.data = new Message(self, new Date(), self.onlineUsers.updateUser(event.data), Entities.decode(event.data.msg), 'p' + Math.floor(Math.random() * 1000000000), MessageType.PRIVATE, BotUtil.copyObjectWithout(event.data, ["username", "msg"]));
+                if (event.data.content.startsWith('!')) {
+                    event.data = new CommandMessage(event.data);
+                    api.events.emit(event.type = EventTypes.CHATCOMMAND, event);
+                } else {
+                    api.events.emit(event.type = EventTypes.WHISPER, event);
+                }
+            }));
+        }
+    };
+
+    if (!connectOptions.token) {
+        if (!connectOptions.channel) {
+            throw new Error("Error: no channelName!");
+        }
+        if (!connectOptions.password || connectOptions.password === '') {
+            connectOptions.token = PicartoAuth.getAnonToken(connectOptions.channel, connectOptions.account, connect);
+        } else {
+            connectOptions.token = PicartoAuth.getAuthedToken(connectOptions.channel, connectOptions.account, connect);
+        }
+    } else {
+        connect(false, connectOptions.token);
     }
 
-    function passthroughEvent(event) {
-        return wrapEvent(event, function (eData) {
-            api.events.emit(event, eData);
-        });
-    }
-
-    this.socket = BotUtil.interceptSocketEvents(io.connect("https://nd1.picarto.tv:443", {
-        secure: true,
-        forceNew: true,
-        query: "token=" + this._token
-    }), function (data) {
-        //console.log(data);
-    });
-
-    PASSTHROUGH_EVENTS.forEach(function (e) {
-        self.socket.on(e, passthroughEvent(e));
-    });
-
-    this.socket.on(EventTypes.ENDHISTORY, function () {
-        inChatHistory = false;
-    });
-
-    this.socket.on(EventTypes.CHANNELUSERS, function (data) {
-        self.onlineUsers.updateList(data);
-    });
-    this.socket.on(EventTypes.USERMESSAGE, wrapEvent(EventTypes.USERMESSAGE, function (event) {
-        event.data = new Message(self, new Date(), self.onlineUsers.updateUser(event.data), Entities.decode(event.data.msg), event.data.id, MessageType.GENERIC, BotUtil.copyObjectWithout(event.data, ["id", "username", "msg"]));
-        if (event.data.content.indexOf('!') === 0) {
-            event.data = new CommandMessage(event.data);
-            api.events.emit(event.type = EventTypes.CHATCOMMAND + ((inChatHistory || event.data.isDuplicate()) ? "Duplicate" : ""), event);
-            if (event.type === EventTypes.CHATCOMMAND && !event.claimed) {
-                event.data.reply("Command not found :(");
-            }
-        } else {
-            api.events.emit(event.type = EventTypes.USERMESSAGE + ((inChatHistory || event.data.isDuplicate()) ? "Duplicate" : ""), event);
-        }
-    }));
-    this.socket.on(EventTypes.MEMESSAGE, wrapEvent(EventTypes.MEMESSAGE, function (event) {
-        event.data = new Message(self, new Date(), self.onlineUsers.updateUser(event.data), Entities.decode(event.data.msg), event.data.id, MessageType.SELF, BotUtil.copyObjectWithout(event.data, ["id", "username", "msg"]));
-        api.events.emit(event.type = EventTypes.MEMESSAGE + (inChatHistory || event.data.isDuplicate()) ? "Duplicate" : "", event);
-    }));
-    this.socket.on(EventTypes.WHISPER, wrapEvent(EventTypes.WHISPER, function (event) {
-        event.data = new Message(self, new Date(), self.onlineUsers.updateUser(event.data), Entities.decode(event.data.msg), 'p' + Math.floor(Math.random() * 1000000000), MessageType.PRIVATE, BotUtil.copyObjectWithout(event.data, ["username", "msg"]));
-        if (event.data.content.startsWith('!')) {
-            event.data = new CommandMessage(event.data);
-            api.events.emit(event.type = EventTypes.CHATCOMMAND, event);
-        } else {
-            api.events.emit(event.type = EventTypes.WHISPER, event);
-        }
-    }));
 };
+
 /**
  * Returns whether or not the channel is connected
  * @returns {Boolean}

@@ -3,7 +3,7 @@
 var PermissionsManager = require('./permissionsmanager');
 var TimeoutsManager = require('./timeoutsmanager');
 var UserManager = require('./usermanager');
-var Channel = require('./channel');
+var Channel = require('../plugins/ChatProvider_Picarto/channel');
 var ConsoleUser = require('./consoleuser');
 
 /**

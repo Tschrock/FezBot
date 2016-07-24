@@ -145,4 +145,21 @@ NiceList.prototype.Random = function () {
     }
 };
 
+NiceList.prototype.Remove = function (item) {
+    if(typeof item.id !== 'undefined') {
+        delete this.items["$" + item.id];
+    }
+    else {
+        for (var id in this.items) {
+            if(this.items[id] === item) {
+                delete this.items[id];
+            }
+        }
+    }
+};
+
+NiceList.prototype.RemoveById = function (itemId) {
+    delete this.items["$" + item.id];
+};
+
 module.exports = NiceList;
