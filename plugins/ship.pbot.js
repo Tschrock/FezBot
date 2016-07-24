@@ -22,7 +22,7 @@ function handleCommand(event) {
 
             if (users.Count() > 0) {
                 if (command.parameters.length > 0) {
-                    command.reply(command.parameters.slice(1).join(' ') + " ❤ " + users.Random().username);
+                    command.reply(command.parameters.join(' ') + " ❤ " + users.Random().username);
                 } else {
                     command.reply(users.Random().username + " ❤ " + users.Random().username);
                 }
