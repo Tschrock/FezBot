@@ -20,7 +20,7 @@ function handleCommand(event) {
         } else if (command.messageType !== MessageTypes.PRIVATE && !command.channel.checkTimeout("cmd.butts")) {
             command.replyPrivate(command.channel.getTimeoutMessage("cmd.butts"));
         } else {
-            command.reply("Chat has mentioned butts " + (storage.getItem("boops") || 0) + " times");
+            command.reply("Chat has mentioned butts " + (storage.getItem("butts") || 0) + " times");
         }
     } else if ((command.command === 'die' || command.command === 'kill' || command.command === 'crash') && event.claim()) {
         if (command.messageType !== MessageTypes.PRIVATE && !command.channel.checkTimeout("cmd.die")) {
